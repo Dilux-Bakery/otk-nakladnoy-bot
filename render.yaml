@@ -1,0 +1,37 @@
+services:
+  - type: web
+    name: otk-nakladnoy-bot
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: BASE_URL
+        sync: false
+      - key: OTK_ALU_ID
+        sync: false
+      - key: OTK_ALU_NAME
+        sync: false
+      - key: OTK_PVH_ID
+        sync: false
+      - key: OTK_PVH_NAME
+        sync: false
+      - key: MASTER_ALU_ID
+        sync: false
+      - key: MASTER_ALU_NAME
+        sync: false
+      - key: MASTER_PVH_ID
+        sync: false
+      - key: MASTER_PVH_NAME
+        sync: false
+      - key: GP_ID
+        sync: false
+      - key: GP_NAME
+        sync: false
+      - key: OPERATOR1_ID
+        sync: false
+      - key: OPERATOR2_ID
+        sync: false
+      - key: RAHBAR_ID
+        sync: false
