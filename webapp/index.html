@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>OTK — Накладной</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:#f2f2f7; min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:16px; gap:12px; }
+  .wrap { width:100%; max-width:480px; }
+
+  /* PROGRESS */
+  .prog { background:#fff; border-radius:12px; padding:14px 16px; box-shadow:0 2px 10px rgba(0,0,0,.08); margin-bottom:12px; }
+  .prog-top { font-size:12px; color:#888; margin-bottom:8px; display:flex; justify-content:space-between; }
+  .prog-bar { height:6px; background:#e0e0e0; border-radius:3px; overflow:hidden; }
+  .prog-fill { height:100%; background:#007AFF; border-radius:3px; transition:width .4s; }
+  .dots { display:flex; justify-content:space-between; margin-top:8px; }
+  .dot { width:26px; height:26px; border-radius:50%; background:#e0e0e0; color:#999; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; transition:.3s; }
+  .dot.on { background:#007AFF; color:#fff; } .dot.done { background:#34C759; color:#fff; }
+
+  .card { background:#fff; border-radius:16px; padding:20px; box-shadow:0 2px 12px rgba(0,0,0,.1); margin-bottom:12px; }
+  .card h2 { font-size:18px; font-weight:700; margin-bottom:4px; }
+  .card p.sub { font-size:13px; color:#888; margin-bottom:18px; }
+
+  .turbadge { display:inline-block; font-size:13px; font-weight:800; letter-spacing:1px; color:#fff; background:#007AFF; padding:4px 12px; border-radius:8px; margin-bottom:14px; }
+  .turbadge.pvh { background:#5856D6; }
+
+  .f { margin-bottom:13px; }
+  .f label { display:block; font-size:11px; font-weight:700; color:#555; margin-bottom:5px; text-transform:uppercase; letter-spacing:.4px; }
+  .f input, .f select { width:100%; padding:12px 14px; border:1.5px solid #e0e0e0; border-radius:10px; font-size:15px; outline:none; background:#fafafa; transition:border-color .2s; }
+  .f input:focus, .f select:focus { border-color:#007AFF; background:#fff; }
+  .f input.err { border-color:#FF3B30; }
+  .errtxt { display:none; color:#FF3B30; font-size:11px; margin-top:3px; }
+  .frow { display:flex; gap:10px; } .frow .f { flex:1; }
+
+  .kv2 { background:#e8f9ee; border:1px solid #34C759; border-radius:8px; padding:10px; font-size:15px; font-weight:700; color:#1a7a1a; text-align:center; margin-bottom:13px; display:none; }
+  .ilist { display:flex; flex-direction:column; gap:7px; margin-bottom:11px; }
+  .irow { background:#f8f9fa; border-radius:8px; padding:9px 12px; font-size:13px; display:flex; justify-content:space-between; align-items:center; }
+  .idel { background:none; border:none; color:#FF3B30; font-size:18px; cursor:pointer; }
+
+  .btns { display:flex; gap:10px; margin-top:8px; }
+  .btn { flex:1; padding:13px; border-radius:12px; border:none; font-size:15px; font-weight:600; cursor:pointer; transition:transform .1s; }
+  .btn:active { transform:scale(.97); }
+  .btn:disabled { opacity:.5; }
+  .btn-g { background:#f0f0f0; color:#555; } .btn-b { background:#007AFF; color:#fff; } .btn-gr { background:#34C759; color:#fff; }
+  .addbtn { width:100%; padding:12px; border-radius:10px; border:1.5px dashed #007AFF; background:none; color:#007AFF; font-size:14px; font-weight:600; cursor:pointer; margin-bottom:13px; }
+
+  .cwrap { position:relative; border:2px dashed #007AFF; border-radius:10px; overflow:hidden; background:#fff; margin-bottom:10px; }
+  .cwrap.signed { border-color:#34C759; border-style:solid; }
+  #sign { display:block; width:100%; height:160px; touch-action:none; }
+  .cph { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; pointer-events:none; color:#bbb; font-size:14px; }
+  .cph.hide { display:none; }
+
+  .sbanner { background:#e6f9e6; border:1px solid #34C759; border-radius:12px; padding:20px; text-align:center; }
+  .sbanner .ico { font-size:46px; margin-bottom:8px; } .sbanner h3 { font-size:18px; color:#1a7a1a; margin-bottom:6px; } .sbanner p { font-size:14px; color:#2a8a2a; }
+
+  .err-banner { background:#fdecea; border:1px solid #FF3B30; color:#b71c1c; border-radius:12px; padding:16px; text-align:center; font-size:14px; }
+  .loading { text-align:center; color:#888; padding:40px; font-size:15px; }
+
+  /* DOC (imzolash rejimida ko'rsatish) */
+  .doc { font-family:'Times New Roman',Times,serif; background:#fff; padding:14px 16px; border:1px solid #ddd; border-radius:6px; font-size:12px; margin-bottom:14px; }
+  .doc .dr { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4px; }
+  .doc .dtype { font-weight:900; letter-spacing:1px; border:1.4px solid #000; padding:1px 8px; border-radius:3px; font-size:13px; }
+  .doc table { width:100%; border-collapse:collapse; font-size:11px; margin:8px 0; }
+  .doc th, .doc td { border:1px solid #000; padding:3px 2px; text-align:center; }
+  .doc th { background:#f2f2f2; }
+  .doc .sgn { display:flex; align-items:center; gap:8px; margin-top:6px; font-size:11px; }
+  .doc .sgn img { height:26px; }
+  .muted { color:#999; font-style:italic; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Yuklanmoqda -->
+  <div class="card" id="v-load"><div class="loading">⏳ Yuklanmoqda…</div></div>
+
+  <!-- Xatolik -->
+  <div class="card" id="v-err" style="display:none"><div class="err-banner" id="err-msg"></div></div>
+
+  <!-- ═══════════ YARATISH (OTK) ═══════════ -->
+  <div id="v-create" style="display:none">
+    <div class="prog">
+      <div class="prog-top"><span id="slabel">1-bosqich</span><span id="scount">1 / 4</span></div>
+      <div class="prog-bar"><div class="prog-fill" id="pfill" style="width:25%"></div></div>
+      <div class="dots"><div class="dot on" id="d1">1</div><div class="dot" id="d2">2</div><div class="dot" id="d3">3</div><div class="dot" id="d4">✓</div></div>
+    </div>
+
+    <!-- 1: Ma'lumot -->
+    <div class="card pg on" id="pg1">
+      <h2>📋 Asosiy ma'lumotlar</h2>
+      <p class="sub">Накладной uchun ma'lumotlarni kiriting</p>
+      <div class="turbadge" id="turBadge">АЛЮМИНЬ</div>
+      <div class="frow">
+        <div class="f"><label>Накладной №</label><input id="nomer" placeholder="482"><div class="errtxt" id="e_nomer">⚠️ № kiriting!</div></div>
+        <div class="f"><label>Счёт №</label><input id="schet" maxlength="12" placeholder="7110700" oninput="checkSchet()"><div class="errtxt" id="e_schet">⚠️ Счёт kiriting!</div></div>
+      </div>
+      <div class="frow">
+        <div class="f"><label>Тур</label><select id="mtur"><option>Дверь</option><option>Окно</option></select></div>
+        <div class="f"><label>Mahsulot nomi</label><input id="mahsulot" placeholder="Профиль 60мм"></div>
+      </div>
+      <div class="f"><label>Цвет (rang)</label><input id="rang" placeholder="Солодовый дуб"><div class="errtxt" id="e_rang">⚠️ Rang kiriting!</div></div>
+      <div class="f" id="profilF" style="display:none"><label>Профил серияси</label><input id="profil" placeholder="WDS 60"></div>
+      <div class="btns"><button class="btn btn-b" onclick="pg1next()">Keyingi →</button></div>
+    </div>
+
+    <!-- 2: O'lchamlar -->
+    <div class="card pg" id="pg2">
+      <h2>📦 O'lchamlar</h2>
+      <p class="sub" id="pg2sub">Qo'shilgan: 0 ta</p>
+      <div class="ilist" id="ilist"></div>
+      <div class="frow">
+        <div class="f"><label>Кол-во</label><input type="number" id="kvo" placeholder="1" oninput="calc()"></div>
+        <div class="f"><label>Ширина mm</label><input type="number" id="shr" placeholder="742" oninput="calc()"></div>
+        <div class="f"><label>Длина mm</label><input type="number" id="dln" placeholder="2350" oninput="calc()"></div>
+      </div>
+      <div class="kv2" id="kv2"></div>
+      <div class="f"><label>Примечание</label><input id="izoh" placeholder="—"></div>
+      <button class="addbtn" onclick="addItem()">➕ Qo'shish</button>
+      <div class="btns"><button class="btn btn-g" onclick="goPage(1)">← Orqaga</button><button class="btn btn-b" onclick="pg2next()">Keyingi →</button></div>
+    </div>
+
+    <!-- 3: Imzo -->
+    <div class="card pg" id="pg3">
+      <h2>✍️ OTK imzosi</h2>
+      <p class="sub">Barmog'ingiz bilan imzo cheking</p>
+      <div class="cwrap" id="cwrap"><canvas id="sign"></canvas><div class="cph" id="cph">✍️ Imzo cheking</div></div>
+      <div class="errtxt" id="e_imzo" style="margin-bottom:8px">⚠️ Imzo cheking!</div>
+      <div class="btns"><button class="btn btn-g" onclick="clearSign()">🗑️</button><button class="btn btn-g" onclick="goPage(2)">← Orqaga</button><button class="btn btn-gr" id="submitCreate" onclick="submitCreate()">✓ Yuborish</button></div>
+    </div>
+
+    <!-- 4: Tayyor -->
+    <div class="card pg" id="pg4">
+      <div class="sbanner"><div class="ico">✅</div><h3>Накладной yaratildi!</h3><p id="okCreate">Master tasdiqlashiga yuborildi…</p></div>
+    </div>
+  </div>
+
+  <!-- ═══════════ IMZOLASH (Master / ГП) ═══════════ -->
+  <div id="v-sign" style="display:none">
+    <div class="card">
+      <h2 id="signTitle">✍️ Tasdiqlash</h2>
+      <p class="sub" id="signSub">Накладнойни ko'rib, imzo cheking</p>
+      <div id="docBox"></div>
+      <div class="cwrap" id="cwrap2"><canvas id="sign2"></canvas><div class="cph" id="cph2">✍️ Imzo cheking</div></div>
+      <div class="errtxt" id="e_imzo2" style="margin-bottom:8px">⚠️ Imzo cheking!</div>
+      <div class="btns"><button class="btn btn-g" onclick="clearSign2()">🗑️ Tozalash</button><button class="btn btn-gr" id="submitSign" onclick="submitSign()">✓ Imzolash</button></div>
+    </div>
+  </div>
+
+  <!-- ═══════════ Yopilgandan keyin ═══════════ -->
+  <div id="v-done" style="display:none">
+    <div class="card"><div class="sbanner"><div class="ico" id="doneIco">✅</div><h3 id="doneT">Bajarildi</h3><p id="doneP"></p></div></div>
+  </div>
+
+</div>
+
+<script>
+const TG = window.Telegram && window.Telegram.WebApp;
+if (TG) { TG.ready(); TG.expand(); }
+const Q = new URLSearchParams(location.search);
+const MODE = Q.get('mode') || 'create';
+const NID = Q.get('id');
+const DEV = Q.get('dev') || '';            // lokal test uchun (server DEV rejimida)
+const TUR_LABEL = { alyumin:'АЛЮМИНЬ', pvh:'ПВХ' };
+let ME = null;                              // {role, tur, name}
+
+function show(id){ ['v-load','v-err','v-create','v-sign','v-done'].forEach(v=>document.getElementById(v).style.display = (v===id?'':'none')); }
+function fail(msg){ document.getElementById('err-msg').textContent = msg; show('v-err'); }
+
+async function api(path, body){
+  const r = await fetch(path, { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(Object.assign({ initData: (TG&&TG.initData)||'', dev: DEV }, body||{})) });
+  const txt = await r.text();
+  let data; try { data = JSON.parse(txt); } catch(e){ data = {error: txt}; }
+  if (!r.ok || data.error) throw new Error(data.error || ('HTTP '+r.status));
+  return data;
+}
+
+/* ───────── INIT ───────── */
+(async function(){
+  try {
+    ME = await api('/api/me');
+    if (MODE === 'sign') return initSign();
+    return initCreate();
+  } catch(e){ fail('Ruxsat yo‘q yoki xato: ' + e.message); }
+})();
+
+/* ═════════ YARATISH (OTK) ═════════ */
+const S = { items:[] };
+function initCreate(){
+  if (ME.role !== 'otk') return fail('Bu bo‘lim faqat OTK uchun.');
+  S.tur = ME.tur;
+  const b = document.getElementById('turBadge');
+  b.textContent = TUR_LABEL[S.tur] || S.tur;
+  b.classList.toggle('pvh', S.tur==='pvh');
+  document.getElementById('profilF').style.display = (S.tur==='pvh') ? 'block' : 'none';
+  initCanvas('sign','cwrap','cph', v=>sigCreate=v);
+  show('v-create');
+}
+const labels = ['','Ma\'lumot','O\'lchamlar','Imzo','Tayyor'];
+function goPage(n){
+  document.querySelectorAll('#v-create .pg').forEach(p=>p.classList.remove('on'));
+  document.getElementById('pg'+n).classList.add('on');
+  document.getElementById('slabel').textContent = n+'-bosqich: '+labels[n];
+  document.getElementById('scount').textContent = n+' / 4';
+  document.getElementById('pfill').style.width = (n*25)+'%';
+  for(let i=1;i<=4;i++) document.getElementById('d'+i).className = 'dot'+(i<n?' done':i===n?' on':'');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+const SCHET_PREFIXES = ['710','711','243','249'];
+function schetOk(v){ return v.length>=6 && SCHET_PREFIXES.some(p=>v.startsWith(p)); }
+function checkSchet(){
+  const el=document.getElementById('schet'), v=el.value.trim(), bad=v.length>3 && !schetOk(v);
+  el.classList.toggle('err',bad);
+  const e=document.getElementById('e_schet'); e.style.display=bad?'block':'none';
+  if(bad) e.textContent='⚠️ 710, 711, 243 yoki 249 bilan boshlanishi kerak!';
+}
+function pg1next(){
+  S.nomer=val('nomer'); S.schet=val('schet'); S.mtur=val('mtur'); S.mahsulot=val('mahsulot'); S.rang=val('rang'); S.profil=val('profil');
+  let ok=true;
+  ok = req('nomer','e_nomer', !!S.nomer) && ok;
+  ok = req('schet','e_schet', schetOk(S.schet)) && ok;
+  ok = req('rang','e_rang', !!S.rang) && ok;
+  if(ok) goPage(2);
+}
+function calc(){
+  const k=+val('kvo')||0, s=+val('shr')||0, d=+val('dln')||0, b=document.getElementById('kv2');
+  if(k&&s&&d){ b.textContent='Кв²: '+(s*d/1e6*k).toFixed(2)+' м²'; b.style.display='block'; } else b.style.display='none';
+}
+function addItem(){
+  const k=parseInt(val('kvo')), s=+val('shr'), d=+val('dln');
+  if(!k||!s||!d){ ['kvo','shr','dln'].forEach(id=>{ if(!+val(id)) document.getElementById(id).classList.add('err'); }); return; }
+  ['kvo','shr','dln'].forEach(id=>document.getElementById(id).classList.remove('err'));
+  S.items.push({ edizm:'шт', kvo:k, shr:s, dln:d, kv2:+(s*d/1e6*k).toFixed(2), izoh:val('izoh') });
+  ['kvo','shr','dln','izoh'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('kv2').style.display='none'; renderItems();
+}
+function delItem(i){ S.items.splice(i,1); renderItems(); }
+function renderItems(){
+  const tot=S.items.reduce((a,i)=>a+i.kv2,0).toFixed(2);
+  document.getElementById('pg2sub').textContent='Qo\'shilgan: '+S.items.length+' ta · Jami: '+tot+' м²';
+  document.getElementById('ilist').innerHTML=S.items.map((it,i)=>
+    '<div class="irow"><div>'+(i+1)+'. '+it.kvo+' dona — '+it.shr+'×'+it.dln+' mm</div>'+
+    '<div style="display:flex;gap:8px;align-items:center"><b style="color:#007AFF">'+it.kv2.toFixed(2)+' м²</b>'+
+    '<button class="idel" onclick="delItem('+i+')">✕</button></div></div>').join('');
+}
+function pg2next(){ if(!S.items.length){ ['kvo','shr','dln'].forEach(id=>document.getElementById(id).classList.add('err')); return; } goPage(3); }
+
+let sigCreate=null;
+async function submitCreate(){
+  if(!sigCreate){ document.getElementById('e_imzo').style.display='block'; return; }
+  const btn=document.getElementById('submitCreate'); btn.disabled=true; btn.textContent='⏳…';
+  try{
+    const res = await api('/api/create', { nakladnoy:{ nomer:S.nomer, schet:S.schet, mtur:S.mtur, mahsulot:S.mahsulot, rang:S.rang, profil:S.profil, items:S.items }, imzo:sigCreate });
+    goPage(4);
+    document.getElementById('okCreate').textContent='№'+S.nomer+' — Master tasdiqlashiga yuborildi.';
+    if(TG) setTimeout(()=>TG.close(), 2500);
+  }catch(e){ btn.disabled=false; btn.textContent='✓ Yuborish'; alert('Xato: '+e.message); }
+}
+
+/* ═════════ IMZOLASH (Master / ГП) ═════════ */
+async function initSign(){
+  if(!NID) return fail('Накладной ID topilmadi.');
+  let n;
+  try { n = (await api('/api/get', { id:NID })).nakladnoy; }
+  catch(e){ return fail('Ochib bo‘lmadi: '+e.message); }
+  if(ME.role==='master' && n.status!=='master') return fail('Bu накладной hozir sizning navbatingizda emas (status: '+n.status+').');
+  if(ME.role==='gp' && n.status!=='gp') return fail('Bu накладной hozir sizning navbatingizda emas (status: '+n.status+').');
+  if(ME.role!=='master' && ME.role!=='gp') return fail('Imzolash huquqi yo‘q.');
+  document.getElementById('signTitle').textContent = (ME.role==='gp'?'✍️ ГП tasdig‘i':'✍️ Master tasdig‘i');
+  document.getElementById('docBox').innerHTML = docHTML(n);
+  initCanvas('sign2','cwrap2','cph2', v=>sigSign=v);
+  show('v-sign');
+}
+function docHTML(n){
+  const tur=TUR_LABEL[n.tur]||n.tur;
+  let rows=(n.items||[]).map((it,i)=>'<tr><td>'+(i+1)+'</td><td>'+(it.edizm||'')+'</td><td>'+(it.kvo||'')+'</td><td>'+(it.shr||'')+'</td><td>'+(it.dln||'')+'</td><td>'+(+it.kv2).toFixed(2)+'</td><td>'+(it.izoh||'')+'</td></tr>').join('');
+  const tot=(n.items||[]).reduce((a,i)=>a+(+i.kv2||0),0).toFixed(2);
+  const sgn=(role,name,imzo)=> '<div class="sgn"><b>'+role+'</b> '+(name||'')+' '+(imzo?'<img src="'+imzo+'">':'<span class="muted">— kutilmoqda</span>')+'</div>';
+  return '<div class="doc">'+
+    '<div class="dr"><div>№ <b>'+(n.nomer||'')+'</b> Внутренняя накладная</div><div class="dtype">'+tur+'</div></div>'+
+    '<div class="dr"><div>Счёт № '+(n.schet||'')+'</div><div>'+(n.mtur||'')+'</div></div>'+
+    '<div class="dr"><div>Цвет: '+(n.rang||'')+'</div><div>'+(n.mahsulot||'')+'</div></div>'+
+    (n.tur==='pvh'&&n.profil?'<div>Профил серияси: '+n.profil+'</div>':'')+
+    '<table><tr><th>№</th><th>Ед.изм</th><th>Кол-во</th><th>Ширина</th><th>Длина</th><th>Кв²</th><th>Примеч.</th></tr>'+rows+
+    '<tr><td colspan="5" style="text-align:right"><b>Итого:</b></td><td><b>'+tot+'</b></td><td></td></tr></table>'+
+    sgn('ОТК:',n.otk_name,n.otk_imzo)+sgn('Мастер:',n.master_name,n.master_imzo)+sgn('Зав.склад ГП:',n.gp_name,n.gp_imzo)+
+    '</div>';
+}
+let sigSign=null;
+async function submitSign(){
+  if(!sigSign){ document.getElementById('e_imzo2').style.display='block'; return; }
+  const btn=document.getElementById('submitSign'); btn.disabled=true; btn.textContent='⏳…';
+  try{
+    const res = await api('/api/sign', { id:NID, imzo:sigSign });
+    show('v-done');
+    if(res.status==='closed'){ document.getElementById('doneT').textContent='Накладной yopildi! 🎉'; document.getElementById('doneP').textContent='PDF operatorlar va rahbarга yuborildi.'; }
+    else { document.getElementById('doneT').textContent='Imzolandi ✅'; document.getElementById('doneP').textContent='ГП tasdig‘iga yuborildi.'; }
+    if(TG) setTimeout(()=>TG.close(), 2500);
+  }catch(e){ btn.disabled=false; btn.textContent='✓ Imzolash'; alert('Xato: '+e.message); }
+}
+
+/* ═════════ Canvas imzo (oq fonда — PDF uchun) ═════════ */
+function initCanvas(canvasId, wrapId, phId, onChange){
+  const c=document.getElementById(canvasId), wrap=document.getElementById(wrapId), ph=document.getElementById(phId);
+  const dpr=window.devicePixelRatio||1, w=Math.min(448, window.innerWidth-32)-4;
+  c.width=w*dpr; c.height=160*dpr; c.style.width=w+'px'; c.style.height='160px';
+  const ctx=c.getContext('2d'); ctx.scale(dpr,dpr);
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,w,160);                 // oq fon
+  ctx.strokeStyle='#111'; ctx.lineWidth=2.5; ctx.lineCap='round'; ctx.lineJoin='round';
+  let drawing=false, dirty=false;
+  function xy(e){ const r=c.getBoundingClientRect(), s=e.touches?e.touches[0]:e; return {x:s.clientX-r.left, y:s.clientY-r.top}; }
+  function down(e){ drawing=true; const p=xy(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); }
+  function move(e){ if(!drawing)return; const p=xy(e); ctx.lineTo(p.x,p.y); ctx.stroke(); if(!dirty){ dirty=true; ph.classList.add('hide'); wrap.classList.add('signed'); } onChange(c.toDataURL('image/png')); }
+  function up(){ drawing=false; if(dirty) onChange(c.toDataURL('image/png')); }
+  c.addEventListener('mousedown',down); c.addEventListener('mousemove',move); c.addEventListener('mouseup',up); c.addEventListener('mouseleave',up);
+  c.addEventListener('touchstart',e=>{e.preventDefault();down(e);},{passive:false});
+  c.addEventListener('touchmove',e=>{e.preventDefault();move(e);},{passive:false});
+  c.addEventListener('touchend',e=>{e.preventDefault();up(e);},{passive:false});
+  c._clear=()=>{ ctx.fillStyle='#fff'; ctx.fillRect(0,0,w,160); dirty=false; ph.classList.remove('hide'); wrap.classList.remove('signed'); onChange(null); };
+}
+function clearSign(){ document.getElementById('sign')._clear(); sigCreate=null; }
+function clearSign2(){ document.getElementById('sign2')._clear(); sigSign=null; }
+
+/* helpers */
+function val(id){ return (document.getElementById(id).value||'').trim(); }
+function req(id, errId, ok){ document.getElementById(id).classList.toggle('err',!ok); document.getElementById(errId).style.display=ok?'none':'block'; return ok; }
+</script>
+</body>
+</html>
