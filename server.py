@@ -700,3 +700,5 @@ app.mount("/webapp", StaticFiles(directory=os.path.join(_HERE, "webapp"), html=T
 @app.get("/")
 async def root():
     return JSONResponse({"ok": True, "service": "otk-nakladnoy"})
+
+def __broken_syntax_test(
