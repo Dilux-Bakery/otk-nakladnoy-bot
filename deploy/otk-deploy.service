@@ -1,0 +1,9 @@
+[Unit]
+Description=OTK bot auto-deploy (git pull + xavfsiz restart)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=Acer
+ExecStart=/home/Acer/otk-deploy.sh

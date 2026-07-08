@@ -1,0 +1,9 @@
+[Unit]
+Description=OTK bot kunlik auto-deploy timer
+
+[Timer]
+OnCalendar=*-*-* 04:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
