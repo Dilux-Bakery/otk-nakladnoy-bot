@@ -30,7 +30,9 @@ REPORT_TIME = "18:30"
 #  ROLLAR — Telegram ID + ism (ism PDF dagi imzo tagida chiqadi)
 # ════════════════════════════════════════════════════════════
 
-# OTK — to'ldiradi + imzolaydi (boshlovchi). Tur bo'yicha 2 kishi.
+# OTK — to'ldiradi + imzolaydi (boshlovchi). 2 kishi.
+# ТУРни (Алюминь/ПВХ) OTK formaда O'ZI tanlaydi — har ikkala OTK ham ikkala turни yarata oladi.
+# (alyumin/pvh kalitlari — shunchaki 2 ta OTK xodimi uchun slot.)
 OTK = {
     "alyumin": {"id": 111111111, "name": "Нажмитдинов А."},
     "pvh":     {"id": 222222222, "name": "Нажмитдинов А."},

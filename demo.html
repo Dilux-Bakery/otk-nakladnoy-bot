@@ -102,16 +102,39 @@
     </div>
     <div class="card pg on" id="pg1">
       <h2>📋 Asosiy ma'lumotlar</h2><p class="sub">Накладной uchun ma'lumotlarni kiriting</p>
-      <div class="turbadge" id="turBadge">АЛЮМИНЬ</div>
       <div class="frow">
+        <div class="f"><label>Материал (Тур)</label><select id="turSel" onchange="turChange()"><option value="alyumin">АЛЮМИНЬ</option><option value="pvh">ПВХ</option></select></div>
         <div class="f"><label>Накладной №</label><input id="nomer" placeholder="482"><div class="errtxt" id="e_nomer">⚠️ № kiriting!</div></div>
-        <div class="f"><label>Счёт №</label><input id="schet" maxlength="12" placeholder="7110700" oninput="checkSchet()"><div class="errtxt" id="e_schet">⚠️ Счёт kiriting!</div></div>
       </div>
       <div class="frow">
-        <div class="f"><label>Тур</label><select id="mtur"><option>Дверь</option><option>Окно</option></select></div>
+        <div class="f"><label>Счёт WinCAD</label><input id="schet_w" maxlength="20" placeholder="WinCAD №" oninput="checkSchet()"></div>
+        <div class="f"><label>Счёт Klaes</label><input id="schet_k" maxlength="20" placeholder="Klaes №" oninput="checkSchet()"><div class="errtxt" id="e_schet">⚠️ Kamida bittasini kiriting!</div></div>
+      </div>
+      <div class="frow">
+        <div class="f"><label>Изделие</label><select id="mtur"><option>Дверь</option><option>Окно</option><option>Sinax</option><option>Доп Профил</option><option>Нестандарт</option></select></div>
         <div class="f"><label>Mahsulot nomi</label><input id="mahsulot" placeholder="Профиль 60мм"></div>
       </div>
-      <div class="f"><label>Цвет (rang)</label><input id="rang" placeholder="Солодовый дуб"><div class="errtxt" id="e_rang">⚠️ Rang kiriting!</div></div>
+      <div class="f"><label>Цвет (rang)</label>
+        <select id="rangSel" onchange="rangChange()">
+          <option value="">— rang tanlang —</option>
+          <option>Золотой дуб-8003</option>
+          <option>Дуб Мокко</option>
+          <option>Шеффилдский серый дуб</option>
+          <option>Alux anthrazit</option>
+          <option>Белый-9016</option>
+          <option>Metbrush anthrazit</option>
+          <option>SW306G Noir (Hameleon)</option>
+          <option>Metbrush quarzgrau</option>
+          <option>Шеффилдский Бетонный Дуб 3003</option>
+          <option>Стекло</option>
+          <option>Metbrush platin</option>
+          <option>Солодовый дуб (Turner Oak Malt 3001)</option>
+          <option>Шеффилдский Высокогорный Дуб 3002</option>
+          <option>9005 Матовый</option>
+          <option value="__other">✏️ Boshqa (yangi rang)…</option>
+        </select>
+        <input id="rang" placeholder="Rang nomini yozing" style="display:none;margin-top:8px">
+        <div class="errtxt" id="e_rang">⚠️ Rang tanlang!</div></div>
       <div class="f" id="profilF" style="display:none"><label>Профил серияси</label><input id="profil" placeholder="WDS 60"></div>
       <div class="btns"><button class="btn btn-b" onclick="pg1next()">Keyingi →</button></div>
     </div>
@@ -120,7 +143,7 @@
       <div class="ilist" id="ilist"></div>
       <div class="frow">
         <div class="f"><label>Кол-во</label><input type="number" id="kvo" placeholder="1" oninput="calc()"></div>
-        <div class="f"><label>Ширина mm</label><input type="number" id="shr" placeholder="742" oninput="calc()"></div>
+        <div class="f" id="fShr"><label>Ширина mm</label><input type="number" id="shr" placeholder="742" oninput="calc()"></div>
         <div class="f"><label>Длина mm</label><input type="number" id="dln" placeholder="2350" oninput="calc()"></div>
       </div>
       <div class="kv2" id="kv2"></div>
@@ -158,6 +181,11 @@
   <!-- OPERATOR / RAHBAR -->
   <div id="v-ops" style="display:none">
     <div class="card">
+      <h2>📊 Kunlik hisobot</h2>
+      <p class="sub">Har kuni <b>18:30</b> da Operator va Rahbarга avtomatik boradi. Bugungi holat:</p>
+      <div id="report"></div>
+    </div>
+    <div class="card">
       <h2>🔎 Qidiruv (Счёт)</h2><p class="sub">Раqamни yozing — eski накладнойлар chiqadi</p>
       <div class="search"><input id="q" placeholder="напр. 7110" oninput="doSearch()"><button class="btn btn-b" style="flex:0 0 auto;width:auto;padding:0 16px" onclick="doSearch()">🔍</button></div>
       <div id="opsBody"></div>
@@ -177,15 +205,14 @@
 /* ───── DEMO harness (server o'rniga localStorage) ───── */
 const KEY='otk_demo_store';
 const ROLES = {
-  otk_alu:{role:'otk',tur:'alyumin',name:'Нажмитдинов А.',label:'OTK Алюм.'},
-  otk_pvh:{role:'otk',tur:'pvh',name:'Каримов П.',label:'OTK ПВХ'},
+  otk:{role:'otk',name:'Нажмитдинов А.',label:'ОТК'},
   master_alu:{role:'master',tur:'alyumin',name:'Мамаджанов А.',label:'Master Алюм.'},
   master_pvh:{role:'master',tur:'pvh',name:'Усмонов М.',label:'Master ПВХ'},
   gp:{role:'gp',name:'Нематуллаев Э.',label:'ГП'},
   ops:{role:'operator',name:'',label:'Operator / Rahbar'},
 };
 const TUR_LABEL={alyumin:'АЛЮМИНЬ',pvh:'ПВХ'};
-let RKEY='otk_alu', ME=ROLES[RKEY], curId=null;
+let RKEY='otk', ME=ROLES[RKEY], curId=null;
 function store(){ try{return JSON.parse(localStorage.getItem(KEY))||[]}catch(e){return[]} }
 function saveStore(a){ localStorage.setItem(KEY,JSON.stringify(a)); }
 
@@ -204,7 +231,7 @@ function render(){
   curId=null;
   if(ME.role==='otk'){ resetCreate(); show('v-create'); hint('OTK: накладной yarating va imzolang. Keyin yuqoridan «Master» rolига o\'ting.'); }
   else if(ME.role==='master'||ME.role==='gp'){ renderList(); }
-  else { show('v-ops'); doSearch(); hint('Operator/Rahbar: Счёт raqamini yozib qidiring, tayyor накладнойни PDF chop eting.'); }
+  else { show('v-ops'); renderReport(); doSearch(); hint('Operator/Rahbar: har kuni 18:30 da kunlik hisobot + barcha PDF lar keladi. Счёт bo\'yicha ham qidirsangiz bo\'ladi.'); }
 }
 
 /* ───── Pending ro'yxat (Master/ГП) ───── */
@@ -223,10 +250,9 @@ function renderList(){
 /* ───── YARATISH ───── */
 const S={items:[]};
 function resetCreate(){
-  S.items=[]; ['nomer','schet','mahsulot','rang','profil','kvo','shr','dln','izoh'].forEach(id=>{const e=document.getElementById(id); if(e)e.value='';});
-  document.getElementById('mtur').selectedIndex=0; renderItems(); goPage(1); sig1=null; clr1();
-  const b=document.getElementById('turBadge'); b.textContent=TUR_LABEL[ME.tur]; b.classList.toggle('pvh',ME.tur==='pvh');
-  document.getElementById('profilF').style.display=(ME.tur==='pvh')?'block':'none';
+  S.items=[]; ['nomer','schet_w','schet_k','mahsulot','rang','profil','kvo','shr','dln','izoh'].forEach(id=>{const e=document.getElementById(id); if(e)e.value='';});
+  document.getElementById('mtur').selectedIndex=0; document.getElementById('turSel').selectedIndex=0; renderItems(); goPage(1); sig1=null; clr1();
+  turChange(); document.getElementById('rangSel').selectedIndex=0; rangChange();
   document.getElementById('subC').disabled=false; document.getElementById('subC').textContent='✓ Yuborish';
   setTimeout(()=>initCanvas('sig1','cw1','ph1',v=>sig1=v),30);
 }
@@ -240,29 +266,37 @@ function goPage(n){
   for(let i=1;i<=4;i++) document.getElementById('d'+i).className='dot'+(i<n?' done':i===n?' on':'');
   window.scrollTo({top:0,behavior:'smooth'});
 }
-const PFX=['710','711','243','249'];
-function schetOk(v){ return v.length>=6 && PFX.some(p=>v.startsWith(p)); }
-function checkSchet(){ const el=document.getElementById('schet'),v=el.value.trim(),bad=v.length>3&&!schetOk(v); el.classList.toggle('err',bad); const e=document.getElementById('e_schet'); e.style.display=bad?'block':'none'; if(bad)e.textContent='⚠️ 710/711/243/249 bilan boshlanishi kerak!'; }
+function schetOk(v){ return (v||'').trim().length>=1; }
+function checkSchet(){ document.getElementById('schet_w').classList.remove('err'); document.getElementById('schet_k').classList.remove('err'); document.getElementById('e_schet').style.display='none'; }
+function turChange(){ const pvh=document.getElementById('turSel').value==='pvh'; document.getElementById('profilF').style.display=pvh?'block':'none'; }
+function rangChange(){ const o=document.getElementById('rangSel').value==='__other'; const inp=document.getElementById('rang'); inp.style.display=o?'block':'none'; if(!o) inp.value=''; }
+function getRang(){ const rs=document.getElementById('rangSel').value; return rs==='__other' ? v('rang') : rs; }
 function pg1next(){
-  S.nomer=v('nomer'); S.schet=v('schet'); S.mtur=v('mtur'); S.mahsulot=v('mahsulot'); S.rang=v('rang'); S.profil=v('profil');
-  let ok=true; ok=req('nomer','e_nomer',!!S.nomer)&&ok; ok=req('schet','e_schet',schetOk(S.schet))&&ok; ok=req('rang','e_rang',!!S.rang)&&ok;
-  if(ok) goPage(2);
+  S.tur=document.getElementById('turSel').value; S.rang=getRang();
+  S.nomer=v('nomer'); S.schet_w=v('schet_w'); S.schet_k=v('schet_k'); S.mtur=v('mtur'); S.mahsulot=v('mahsulot'); S.profil=v('profil');
+  let ok=true; ok=req('nomer','e_nomer',!!S.nomer)&&ok;
+  const sok=!!(S.schet_w||S.schet_k); document.getElementById('e_schet').style.display=sok?'none':'block';
+  document.getElementById('schet_w').classList.toggle('err',!sok); document.getElementById('schet_k').classList.toggle('err',!sok); ok=sok&&ok;
+  const rangOk=!!S.rang; document.getElementById('e_rang').style.display=rangOk?'none':'block'; ok=rangOk&&ok;
+  if(ok){ setupDims(); goPage(2); }
 }
-function calc(){ const k=+v('kvo')||0,s=+v('shr')||0,d=+v('dln')||0,b=document.getElementById('kv2'); if(k&&s&&d){b.textContent='Кв²: '+(s*d/1e6*k).toFixed(2)+' м²'; b.style.display='block';} else b.style.display='none'; }
-function addItem(){ const k=parseInt(v('kvo')),s=+v('shr'),d=+v('dln'); if(!k||!s||!d){['kvo','shr','dln'].forEach(id=>{if(!+v(id))document.getElementById(id).classList.add('err');});return;} ['kvo','shr','dln'].forEach(id=>document.getElementById(id).classList.remove('err')); S.items.push({edizm:'шт',kvo:k,shr:s,dln:d,kv2:+(s*d/1e6*k).toFixed(2),izoh:v('izoh')}); ['kvo','shr','dln','izoh'].forEach(id=>document.getElementById(id).value=''); document.getElementById('kv2').style.display='none'; renderItems(); }
+function isProf(){ return (S.mtur || (document.getElementById('mtur')||{}).value) === 'Доп Профил'; }
+function setupDims(){ document.getElementById('fShr').style.display = isProf() ? 'none' : ''; document.getElementById('kv2').style.display='none'; }
+function calc(){ const k=+v('kvo')||0,s=+v('shr')||0,d=+v('dln')||0,b=document.getElementById('kv2'); if(isProf()){ if(d){b.textContent='Длина: '+d+' mm'+(k>1?' × '+k:'');b.style.display='block';} else b.style.display='none'; return; } if(k&&s&&d){b.textContent='Кв²: '+(s*d/1e6*k).toFixed(2)+' м²'; b.style.display='block';} else b.style.display='none'; }
+function addItem(){ const s=+v('shr'),d=+v('dln'); if(isProf()){ const k=parseInt(v('kvo'))||1; if(!d){document.getElementById('dln').classList.add('err');return;} document.getElementById('dln').classList.remove('err'); S.items.push({edizm:'шт',kvo:k,shr:'',dln:d,kv2:'',izoh:v('izoh')}); } else { const k=parseInt(v('kvo')); if(!k||!s||!d){['kvo','shr','dln'].forEach(id=>{if(!+v(id))document.getElementById(id).classList.add('err');});return;} ['kvo','shr','dln'].forEach(id=>document.getElementById(id).classList.remove('err')); S.items.push({edizm:'шт',kvo:k,shr:s,dln:d,kv2:+(s*d/1e6*k).toFixed(2),izoh:v('izoh')}); } ['kvo','shr','dln','izoh'].forEach(id=>document.getElementById(id).value=''); document.getElementById('kv2').style.display='none'; renderItems(); }
 function delItem(i){ S.items.splice(i,1); renderItems(); }
-function renderItems(){ const tot=S.items.reduce((a,i)=>a+i.kv2,0).toFixed(2); document.getElementById('pg2sub').textContent='Qo\'shilgan: '+S.items.length+' ta · Jami: '+tot+' м²'; document.getElementById('ilist').innerHTML=S.items.map((it,i)=>`<div class="irow"><div>${i+1}. ${it.kvo} dona — ${it.shr}×${it.dln} mm</div><div style="display:flex;gap:8px;align-items:center"><b style="color:#007AFF">${it.kv2.toFixed(2)} м²</b><button class="idel" onclick="delItem(${i})">✕</button></div></div>`).join(''); }
-function pg2next(){ if(!S.items.length){['kvo','shr','dln'].forEach(id=>document.getElementById(id).classList.add('err'));return;} goPage(3); }
+function renderItems(){ const tot=S.items.reduce((a,i)=>a+(+i.kv2||0),0).toFixed(2); document.getElementById('pg2sub').textContent='Qo\'shilgan: '+S.items.length+' ta'+(isProf()?'':' · Jami: '+tot+' м²'); document.getElementById('ilist').innerHTML=S.items.map((it,i)=>{const desc=it.shr?`${it.kvo} dona — ${it.shr}×${it.dln} mm`:`${it.kvo} dona — Длина ${it.dln} mm`;const v2=it.shr?`<b style="color:#007AFF">${(+it.kv2).toFixed(2)} м²</b>`:`<b style="color:#5856D6">профиль</b>`;return `<div class="irow"><div>${i+1}. ${desc}</div><div style="display:flex;gap:8px;align-items:center">${v2}<button class="idel" onclick="delItem(${i})">✕</button></div></div>`;}).join(''); }
+function pg2next(){ if(!S.items.length){(isProf()?['dln']:['kvo','shr','dln']).forEach(id=>document.getElementById(id).classList.add('err'));return;} goPage(3); }
 let sig1=null;
 function submitCreate(){
   if(!sig1){ document.getElementById('e_imzo').style.display='block'; return; }
   const all=store(); const id=(all.reduce((m,n)=>Math.max(m,n.id),0)||0)+1;
-  all.push({ id, nomer:S.nomer, tur:ME.tur, schet:S.schet, mtur:S.mtur, mahsulot:S.mahsulot, rang:S.rang, profil:S.profil, items:S.items,
+  all.push({ id, nomer:S.nomer, tur:S.tur, schet:[S.schet_w,S.schet_k].filter(Boolean).join(' / '), schet_w:S.schet_w, schet_k:S.schet_k, mtur:S.mtur, mahsulot:S.mahsulot, rang:S.rang, profil:S.profil, items:S.items,
     status:'master', otk_name:ME.name, otk_imzo:sig1, master_name:'', master_imzo:'', gp_name:'', gp_imzo:'',
     created_at:new Date().toISOString().slice(0,16).replace('T',' ') });
   saveStore(all);
-  goPage(4); document.getElementById('okC').textContent='№'+S.nomer+' — Master tasdiqlashiga yuborildi. Endi yuqoridan «Master '+(ME.tur==='alyumin'?'Алюм.':'ПВХ')+'» rolига o\'ting.';
-  hint('✅ Yaratildi! Endi «Master '+(ME.tur==='alyumin'?'Алюм.':'ПВХ')+'» rolига o\'tib tasdiqlang.');
+  goPage(4); document.getElementById('okC').textContent='№'+S.nomer+' — Master tasdiqlashiga yuborildi. Endi yuqoridan «Master '+(S.tur==='alyumin'?'Алюм.':'ПВХ')+'» rolига o\'ting.';
+  hint('✅ Yaratildi! Endi «Master '+(S.tur==='alyumin'?'Алюм.':'ПВХ')+'» rolига o\'tib tasdiqlang.');
 }
 
 /* ───── IMZOLASH ───── */
@@ -284,6 +318,25 @@ function submitSign(){
   else { render(); hint('✅ Master imzoladi. Endi «ГП» rolига o\'ting.'); }
 }
 
+/* ───── Kunlik hisobot (18:30 simulyatsiya) ───── */
+function renderReport(){
+  const all=store().filter(n=>n.status==='closed');
+  const agg={alyumin:[0,0],pvh:[0,0]};
+  all.forEach(n=>{ const t=agg[n.tur]?n.tur:'alyumin'; agg[t][0]++; agg[t][1]+=(n.items||[]).reduce((a,i)=>a+(+i.kv2||0),0); });
+  const a=agg.alyumin,p=agg.pvh,tn=a[0]+p[0],ta=a[1]+p[1];
+  const d=new Date(),dd=`${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
+  let html=`<div style="background:#1c1c1e;color:#fff;border-radius:12px;padding:16px;font-size:14px;line-height:2">
+    <div style="font-weight:700;margin-bottom:6px;color:#ff9f0a">📊 KUNLIK HISOBOT — ${dd}</div>
+    🔵 Алюминь: <b>${a[0]} та · ${a[1].toFixed(2)} м²</b><br>
+    🟣 ПВХ: <b>${p[0]} та · ${p[1].toFixed(2)} м²</b>
+    <div style="border-top:1px solid #444;margin:8px 0"></div>
+    Σ JAMI: <b style="color:#34C759">${tn} та · ${ta.toFixed(2)} м²</b></div>`;
+  if(all.length) html+=`<div style="font-size:12px;color:#888;margin:10px 0 4px">Bugun yopilган ${all.length} та — PDF lari 18:30 da yuboriladi:</div>`+
+    all.map(n=>`<div class="litem"><div><div class="ti">№${n.nomer} · ${TUR_LABEL[n.tur]}</div><div class="su">${(n.items||[]).reduce((a,i)=>a+(+i.kv2||0),0).toFixed(2)} м² · Счёт ${n.schet}</div></div><button onclick="showDocById(${n.id})">📄 PDF</button></div>`).join('');
+  else html+='<div class="empty" style="padding:14px">Bugun yopilган накладной yo\'q.</div>';
+  document.getElementById('report').innerHTML=html;
+}
+
 /* ───── OPERATOR qidiruv ───── */
 function doSearch(){
   const q=(document.getElementById('q').value||'').trim();
@@ -301,7 +354,7 @@ function showDoc(n){ document.getElementById('docFull').innerHTML=docHTML(n,true
 /* ───── Hujjat HTML ───── */
 function docHTML(n, full){
   const tur=TUR_LABEL[n.tur]||n.tur;
-  let rows=(n.items||[]).map((it,i)=>`<tr><td>${i+1}</td><td>${it.edizm||''}</td><td>${it.kvo||''}</td><td>${it.shr||''}</td><td>${it.dln||''}</td><td>${(+it.kv2).toFixed(2)}</td><td>${it.izoh||''}</td></tr>`).join('');
+  let rows=(n.items||[]).map((it,i)=>`<tr><td>${i+1}</td><td>${it.edizm||''}</td><td>${it.kvo||''}</td><td>${it.shr||''}</td><td>${it.dln||''}</td><td>${it.kv2!==''&&it.kv2!=null?(+it.kv2).toFixed(2):''}</td><td>${it.izoh||''}</td></tr>`).join('');
   if(full){ for(let i=(n.items||[]).length;i<6;i++) rows+='<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>'; }
   const tot=(n.items||[]).reduce((a,i)=>a+(+i.kv2||0),0).toFixed(2);
   const dt=(n.created_at||'').slice(0,10).split('-'); const dstr=dt.length===3?`"${dt[2]}" ${dt[1]} ${dt[0]} г.`:'';
@@ -309,7 +362,7 @@ function docHTML(n, full){
   return '<div class="doc">'+
     (dstr?`<div style="text-align:right;margin-bottom:4px">${dstr}</div>`:'')+
     `<div class="dr"><div>№ <b>${n.nomer||''}</b> Внутренняя накладная</div><div class="dtype">${tur}</div></div>`+
-    `<div class="dr"><div>Счёт № ${n.schet||''}</div><div>${n.mtur||''}</div></div>`+
+    `<div class="dr"><div>Счёт WinCAD: ${n.schet_w||'—'} · Klaes: ${n.schet_k||'—'}</div><div>${n.mtur||''}</div></div>`+
     `<div class="dr"><div>Цвет: ${n.rang||''}</div><div>${n.mahsulot||''}</div></div>`+
     (n.tur==='pvh'&&n.profil?`<div>Профил серияси: ${n.profil}</div>`:'')+
     '<table><tr><th>№</th><th>Ед.изм</th><th>Кол-во</th><th>Ширина</th><th>Длина</th><th>Кв²</th><th>Примеч.</th></tr>'+rows+

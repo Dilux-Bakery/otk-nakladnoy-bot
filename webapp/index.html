@@ -28,8 +28,8 @@
 
   .f { margin-bottom:13px; }
   .f label { display:block; font-size:11px; font-weight:700; color:#555; margin-bottom:5px; text-transform:uppercase; letter-spacing:.4px; }
-  .f input, .f select { width:100%; padding:12px 14px; border:1.5px solid #e0e0e0; border-radius:10px; font-size:15px; outline:none; background:#fafafa; transition:border-color .2s; }
-  .f input:focus, .f select:focus { border-color:#007AFF; background:#fff; }
+  .f input, .f select, .f textarea { width:100%; padding:12px 14px; border:1.5px solid #e0e0e0; border-radius:10px; font-size:15px; outline:none; background:#fafafa; transition:border-color .2s; font-family:inherit; resize:vertical; }
+  .f input:focus, .f select:focus, .f textarea:focus { border-color:#007AFF; background:#fff; }
   .f input.err { border-color:#FF3B30; }
   .errtxt { display:none; color:#FF3B30; font-size:11px; margin-top:3px; }
   .frow { display:flex; gap:10px; } .frow .f { flex:1; }
@@ -91,16 +91,39 @@
     <div class="card pg on" id="pg1">
       <h2>📋 Asosiy ma'lumotlar</h2>
       <p class="sub">Накладной uchun ma'lumotlarni kiriting</p>
-      <div class="turbadge" id="turBadge">АЛЮМИНЬ</div>
       <div class="frow">
+        <div class="f"><label>Материал (Тур)</label><select id="turSel" onchange="turChange()"><option value="alyumin">АЛЮМИНЬ</option><option value="pvh">ПВХ</option></select></div>
         <div class="f"><label>Накладной №</label><input id="nomer" placeholder="482"><div class="errtxt" id="e_nomer">⚠️ № kiriting!</div></div>
-        <div class="f"><label>Счёт №</label><input id="schet" maxlength="12" placeholder="7110700" oninput="checkSchet()"><div class="errtxt" id="e_schet">⚠️ Счёт kiriting!</div></div>
       </div>
       <div class="frow">
-        <div class="f"><label>Тур</label><select id="mtur"><option>Дверь</option><option>Окно</option></select></div>
+        <div class="f"><label>Счёт WinCAD</label><input id="schet_w" maxlength="20" placeholder="WinCAD №" oninput="checkSchet()"></div>
+        <div class="f"><label>Счёт Klaes</label><input id="schet_k" maxlength="20" placeholder="Klaes №" oninput="checkSchet()"><div class="errtxt" id="e_schet">⚠️ Kamida bittasini kiriting!</div></div>
+      </div>
+      <div class="frow">
+        <div class="f"><label>Изделие</label><select id="mtur"><option>Дверь</option><option>Окно</option><option>Sinax</option><option>Доп Профил</option><option>Москитная сетка</option><option>Нестандарт</option></select></div>
         <div class="f"><label>Mahsulot nomi</label><input id="mahsulot" placeholder="Профиль 60мм"></div>
       </div>
-      <div class="f"><label>Цвет (rang)</label><input id="rang" placeholder="Солодовый дуб"><div class="errtxt" id="e_rang">⚠️ Rang kiriting!</div></div>
+      <div class="f"><label>Цвет (rang)</label>
+        <select id="rangSel" onchange="rangChange()">
+          <option value="">— rang tanlang —</option>
+          <option>Золотой дуб-8003</option>
+          <option>Дуб Мокко</option>
+          <option>Шеффилдский серый дуб</option>
+          <option>Alux anthrazit</option>
+          <option>Белый-9016</option>
+          <option>Metbrush anthrazit</option>
+          <option>SW306G Noir (Hameleon)</option>
+          <option>Metbrush quarzgrau</option>
+          <option>Шеффилдский Бетонный Дуб 3003</option>
+          <option>Стекло</option>
+          <option>Metbrush platin</option>
+          <option>Солодовый дуб (Turner Oak Malt 3001)</option>
+          <option>Шеффилдский Высокогорный Дуб 3002</option>
+          <option>9005 Матовый</option>
+          <option value="__other">✏️ Boshqa (yangi rang)…</option>
+        </select>
+        <input id="rang" placeholder="Rang nomini yozing" style="display:none;margin-top:8px">
+        <div class="errtxt" id="e_rang">⚠️ Rang tanlang!</div></div>
       <div class="f" id="profilF" style="display:none"><label>Профил серияси</label><input id="profil" placeholder="WDS 60"></div>
       <div class="btns"><button class="btn btn-b" onclick="pg1next()">Keyingi →</button></div>
     </div>
@@ -112,12 +135,14 @@
       <div class="ilist" id="ilist"></div>
       <div class="frow">
         <div class="f"><label>Кол-во</label><input type="number" id="kvo" placeholder="1" oninput="calc()"></div>
-        <div class="f"><label>Ширина mm</label><input type="number" id="shr" placeholder="742" oninput="calc()"></div>
+        <div class="f" id="fShr"><label>Ширина mm</label><input type="number" id="shr" placeholder="742" oninput="calc()"></div>
         <div class="f"><label>Длина mm</label><input type="number" id="dln" placeholder="2350" oninput="calc()"></div>
       </div>
       <div class="kv2" id="kv2"></div>
+      <div class="f" id="fKv2man" style="display:none"><label>Кв² (кв.м) — qo'lda yoziladi</label><input type="text" id="kv2man" inputmode="decimal" placeholder="Masalan: 0.42 yoki 0,42"></div>
       <div class="f"><label>Примечание</label><input id="izoh" placeholder="—"></div>
       <button class="addbtn" onclick="addItem()">➕ Qo'shish</button>
+      <div class="f"><label>⚠️ Камчиликлар (bo'lsa)</label><textarea id="kamchilik" rows="2" placeholder="Aniqlangan kamchiliklar… (ixtiyoriy)"></textarea></div>
       <div class="btns"><button class="btn btn-g" onclick="goPage(1)">← Orqaga</button><button class="btn btn-b" onclick="pg2next()">Keyingi →</button></div>
     </div>
 
@@ -145,6 +170,10 @@
       <div class="cwrap" id="cwrap2"><canvas id="sign2"></canvas><div class="cph" id="cph2">✍️ Imzo cheking</div></div>
       <div class="errtxt" id="e_imzo2" style="margin-bottom:8px">⚠️ Imzo cheking!</div>
       <div class="btns"><button class="btn btn-g" onclick="clearSign2()">🗑️ Tozalash</button><button class="btn btn-gr" id="submitSign" onclick="submitSign()">✓ Imzolash</button></div>
+      <div style="border-top:1px solid #eee; margin-top:16px; padding-top:14px">
+        <div class="f"><label>❌ Xato bo'lsa — bekor sababi (ixtiyoriy)</label><input id="cancelReason" placeholder="Masalan: Счёт raqami xato"></div>
+        <button class="btn" id="cancelBtn" style="width:100%; background:#FF3B30; color:#fff" onclick="submitCancel()">❌ Накладнойни bekor qilish</button>
+      </div>
     </div>
   </div>
 
@@ -161,6 +190,7 @@ if (TG) { TG.ready(); TG.expand(); }
 const Q = new URLSearchParams(location.search);
 const MODE = Q.get('mode') || 'create';
 const NID = Q.get('id');
+const EDIT_ID = (Q.get('mode') === 'edit') ? Q.get('id') : null;
 const DEV = Q.get('dev') || '';            // lokal test uchun (server DEV rejimida)
 const TUR_LABEL = { alyumin:'АЛЮМИНЬ', pvh:'ПВХ' };
 let ME = null;                              // {role, tur, name}
@@ -182,6 +212,7 @@ async function api(path, body){
   try {
     ME = await api('/api/me');
     if (MODE === 'sign') return initSign();
+    if (MODE === 'edit') return initEdit();
     return initCreate();
   } catch(e){ fail('Ruxsat yo‘q yoki xato: ' + e.message); }
 })();
@@ -190,13 +221,31 @@ async function api(path, body){
 const S = { items:[] };
 function initCreate(){
   if (ME.role !== 'otk') return fail('Bu bo‘lim faqat OTK uchun.');
-  S.tur = ME.tur;
-  const b = document.getElementById('turBadge');
-  b.textContent = TUR_LABEL[S.tur] || S.tur;
-  b.classList.toggle('pvh', S.tur==='pvh');
-  document.getElementById('profilF').style.display = (S.tur==='pvh') ? 'block' : 'none';
+  turChange(); rangChange();
   initCanvas('sign','cwrap','cph', v=>sigCreate=v);
   show('v-create');
+}
+async function initEdit(){
+  if (ME.role !== 'otk') return fail('Faqat OTK tahrirlaydi.');
+  let n;
+  try { n = (await api('/api/get', { id: NID })).nakladnoy; }
+  catch(e){ return fail('Ochib bo‘lmadi: ' + e.message); }
+  initCreate();
+  document.getElementById('turSel').value = n.tur || 'alyumin'; turChange();
+  document.getElementById('nomer').value = n.nomer || '';
+  document.getElementById('schet_w').value = n.schet_w || '';
+  document.getElementById('schet_k').value = n.schet_k || '';
+  document.getElementById('mtur').value = n.mtur || 'Дверь';
+  document.getElementById('mahsulot').value = n.mahsulot || '';
+  const rs = document.getElementById('rangSel');
+  const has = [...rs.options].some(o => o.textContent === n.rang);
+  if (n.rang && has) { rs.value = n.rang; rangChange(); }
+  else if (n.rang) { rs.value = '__other'; rangChange(); document.getElementById('rang').value = n.rang; }
+  document.getElementById('profil').value = n.profil || '';
+  document.getElementById('kamchilik').value = n.kamchilik || '';
+  S.items = (n.items || []).slice();
+  renderItems();
+  document.querySelector('#pg1 h2').textContent = '✏️ Tahrirlash №' + (n.nomer || '');
 }
 const labels = ['','Ma\'lumot','O\'lchamlar','Imzo','Tayyor'];
 function goPage(n){
@@ -208,53 +257,85 @@ function goPage(n){
   for(let i=1;i<=4;i++) document.getElementById('d'+i).className = 'dot'+(i<n?' done':i===n?' on':'');
   window.scrollTo({top:0,behavior:'smooth'});
 }
-const SCHET_PREFIXES = ['710','711','243','249'];
-function schetOk(v){ return v.length>=6 && SCHET_PREFIXES.some(p=>v.startsWith(p)); }
+function schetOk(v){ return (v||'').trim().length>=1; }
 function checkSchet(){
-  const el=document.getElementById('schet'), v=el.value.trim(), bad=v.length>3 && !schetOk(v);
-  el.classList.toggle('err',bad);
-  const e=document.getElementById('e_schet'); e.style.display=bad?'block':'none';
-  if(bad) e.textContent='⚠️ 710, 711, 243 yoki 249 bilan boshlanishi kerak!';
+  document.getElementById('schet_w').classList.remove('err');
+  document.getElementById('schet_k').classList.remove('err');
+  document.getElementById('e_schet').style.display='none';
 }
+function turChange(){ const pvh=document.getElementById('turSel').value==='pvh'; document.getElementById('profilF').style.display=pvh?'block':'none'; }
+function rangChange(){ const o=document.getElementById('rangSel').value==='__other'; const inp=document.getElementById('rang'); inp.style.display=o?'block':'none'; if(!o) inp.value=''; }
+function getRang(){ const rs=document.getElementById('rangSel').value; return rs==='__other' ? val('rang') : rs; }
 function pg1next(){
-  S.nomer=val('nomer'); S.schet=val('schet'); S.mtur=val('mtur'); S.mahsulot=val('mahsulot'); S.rang=val('rang'); S.profil=val('profil');
+  S.tur=document.getElementById('turSel').value; S.rang=getRang();
+  S.nomer=val('nomer'); S.schet_w=val('schet_w'); S.schet_k=val('schet_k'); S.mtur=val('mtur'); S.mahsulot=val('mahsulot'); S.profil=val('profil');
   let ok=true;
   ok = req('nomer','e_nomer', !!S.nomer) && ok;
-  ok = req('schet','e_schet', schetOk(S.schet)) && ok;
-  ok = req('rang','e_rang', !!S.rang) && ok;
-  if(ok) goPage(2);
+  const schetOk2 = !!(S.schet_w || S.schet_k);
+  document.getElementById('e_schet').style.display = schetOk2 ? 'none' : 'block';
+  document.getElementById('schet_w').classList.toggle('err', !schetOk2);
+  document.getElementById('schet_k').classList.toggle('err', !schetOk2);
+  ok = schetOk2 && ok;
+  const rangOk=!!S.rang; document.getElementById('e_rang').style.display=rangOk?'none':'block'; ok = rangOk && ok;
+  if(ok){ setupDims(); goPage(2); }
+}
+function isProf(){ return (S.mtur || (document.getElementById('mtur')||{}).value) === 'Доп Профил'; }
+function isNonStd(){ return (S.mtur || (document.getElementById('mtur')||{}).value) === 'Нестандарт'; }
+function setupDims(){
+  document.getElementById('fShr').style.display = isProf() ? 'none' : '';
+  document.getElementById('fKv2man').style.display = isNonStd() ? '' : 'none';
+  document.getElementById('kv2').style.display='none';
 }
 function calc(){
   const k=+val('kvo')||0, s=+val('shr')||0, d=+val('dln')||0, b=document.getElementById('kv2');
+  if(isNonStd()){ b.style.display='none'; return; }   // Нестандарт — Кв² qo'lда yoziladi, avtomat yo'q
+  if(isProf()){ if(d){ b.textContent='Длина: '+d+' mm'+(k>1?' × '+k:''); b.style.display='block'; } else b.style.display='none'; return; }
   if(k&&s&&d){ b.textContent='Кв²: '+(s*d/1e6*k).toFixed(2)+' м²'; b.style.display='block'; } else b.style.display='none';
 }
 function addItem(){
-  const k=parseInt(val('kvo')), s=+val('shr'), d=+val('dln');
-  if(!k||!s||!d){ ['kvo','shr','dln'].forEach(id=>{ if(!+val(id)) document.getElementById(id).classList.add('err'); }); return; }
-  ['kvo','shr','dln'].forEach(id=>document.getElementById(id).classList.remove('err'));
-  S.items.push({ edizm:'шт', kvo:k, shr:s, dln:d, kv2:+(s*d/1e6*k).toFixed(2), izoh:val('izoh') });
-  ['kvo','shr','dln','izoh'].forEach(id=>document.getElementById(id).value='');
+  const s=+val('shr'), d=+val('dln');
+  if(isProf()){
+    const k=parseInt(val('kvo'))||1;
+    if(!d){ document.getElementById('dln').classList.add('err'); return; }
+    document.getElementById('dln').classList.remove('err');
+    S.items.push({ edizm:'шт', kvo:k, shr:'', dln:d, kv2:'', izoh:val('izoh') });
+  } else if(isNonStd()){
+    const k=parseInt(val('kvo')), q=+(val('kv2man').replace(',', '.'));   // vergul ham, nuqta ham
+    if(!k||!s||!d||!q){ ['kvo','shr','dln','kv2man'].forEach(id=>{ const v=(id==='kv2man'?+val('kv2man').replace(',','.'):+val(id)); if(!v) document.getElementById(id).classList.add('err'); }); return; }
+    ['kvo','shr','dln','kv2man'].forEach(id=>document.getElementById(id).classList.remove('err'));
+    S.items.push({ edizm:'шт', kvo:k, shr:s, dln:d, kv2:+q.toFixed(2), izoh:val('izoh') });   // Кв² qo'lда
+  } else {
+    const k=parseInt(val('kvo'));
+    if(!k||!s||!d){ ['kvo','shr','dln'].forEach(id=>{ if(!+val(id)) document.getElementById(id).classList.add('err'); }); return; }
+    ['kvo','shr','dln'].forEach(id=>document.getElementById(id).classList.remove('err'));
+    S.items.push({ edizm:'шт', kvo:k, shr:s, dln:d, kv2:+(s*d/1e6*k).toFixed(2), izoh:val('izoh') });
+  }
+  ['kvo','shr','dln','izoh','kv2man'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('kv2').style.display='none'; renderItems();
 }
 function delItem(i){ S.items.splice(i,1); renderItems(); }
 function renderItems(){
-  const tot=S.items.reduce((a,i)=>a+i.kv2,0).toFixed(2);
-  document.getElementById('pg2sub').textContent='Qo\'shilgan: '+S.items.length+' ta · Jami: '+tot+' м²';
-  document.getElementById('ilist').innerHTML=S.items.map((it,i)=>
-    '<div class="irow"><div>'+(i+1)+'. '+it.kvo+' dona — '+it.shr+'×'+it.dln+' mm</div>'+
-    '<div style="display:flex;gap:8px;align-items:center"><b style="color:#007AFF">'+it.kv2.toFixed(2)+' м²</b>'+
-    '<button class="idel" onclick="delItem('+i+')">✕</button></div></div>').join('');
+  const tot=S.items.reduce((a,i)=>a+(+i.kv2||0),0).toFixed(2);
+  const totLen=S.items.reduce((a,i)=>a+((parseInt(i.kvo)||0)*(+i.dln||0)),0);
+  document.getElementById('pg2sub').textContent='Qo\'shilgan: '+S.items.length+' ta'+(isProf()?(totLen?' · Umumiy uzunlik: '+(totLen/1000).toFixed(2)+' м':''):' · Jami: '+tot+' м²');
+  document.getElementById('ilist').innerHTML=S.items.map((it,i)=>{
+    const desc = it.shr ? (it.kvo+' dona — '+it.shr+'×'+it.dln+' mm') : (it.kvo+' dona — Длина '+it.dln+' mm');
+    const v2 = it.shr ? '<b style="color:#007AFF">'+(+it.kv2).toFixed(2)+' м²</b>' : '<b style="color:#5856D6">профиль</b>';
+    return '<div class="irow"><div>'+(i+1)+'. '+desc+'</div><div style="display:flex;gap:8px;align-items:center">'+v2+'<button class="idel" onclick="delItem('+i+')">✕</button></div></div>';
+  }).join('');
 }
-function pg2next(){ if(!S.items.length){ ['kvo','shr','dln'].forEach(id=>document.getElementById(id).classList.add('err')); return; } goPage(3); }
+function pg2next(){ if(!S.items.length){ (isProf()?['dln']:isNonStd()?['kvo','shr','dln','kv2man']:['kvo','shr','dln']).forEach(id=>document.getElementById(id).classList.add('err')); return; } goPage(3); }
 
 let sigCreate=null;
 async function submitCreate(){
   if(!sigCreate){ document.getElementById('e_imzo').style.display='block'; return; }
   const btn=document.getElementById('submitCreate'); btn.disabled=true; btn.textContent='⏳…';
   try{
-    const res = await api('/api/create', { nakladnoy:{ nomer:S.nomer, schet:S.schet, mtur:S.mtur, mahsulot:S.mahsulot, rang:S.rang, profil:S.profil, items:S.items }, imzo:sigCreate });
+    const nk = { tur:S.tur, nomer:S.nomer, schet_w:S.schet_w, schet_k:S.schet_k, mtur:S.mtur, mahsulot:S.mahsulot, rang:S.rang, profil:S.profil, kamchilik:val('kamchilik'), items:S.items };
+    if (EDIT_ID) await api('/api/update', { id:EDIT_ID, nakladnoy:nk, imzo:sigCreate });
+    else await api('/api/create', { nakladnoy:nk, imzo:sigCreate });
     goPage(4);
-    document.getElementById('okCreate').textContent='№'+S.nomer+' — Master tasdiqlashiga yuborildi.';
+    document.getElementById('okCreate').textContent = EDIT_ID ? ('№'+S.nomer+' — tuzatildi, Master qayta ko‘radi.') : ('№'+S.nomer+' — Master tasdiqlashiga yuborildi.');
     if(TG) setTimeout(()=>TG.close(), 2500);
   }catch(e){ btn.disabled=false; btn.textContent='✓ Yuborish'; alert('Xato: '+e.message); }
 }
@@ -275,16 +356,23 @@ async function initSign(){
 }
 function docHTML(n){
   const tur=TUR_LABEL[n.tur]||n.tur;
-  let rows=(n.items||[]).map((it,i)=>'<tr><td>'+(i+1)+'</td><td>'+(it.edizm||'')+'</td><td>'+(it.kvo||'')+'</td><td>'+(it.shr||'')+'</td><td>'+(it.dln||'')+'</td><td>'+(+it.kv2).toFixed(2)+'</td><td>'+(it.izoh||'')+'</td></tr>').join('');
+  let rows=(n.items||[]).map((it,i)=>'<tr><td>'+(i+1)+'</td><td>'+(it.edizm||'')+'</td><td>'+(it.kvo||'')+'</td><td>'+(it.shr||'')+'</td><td>'+(it.dln||'')+'</td><td>'+(it.kv2!==''&&it.kv2!=null?(+it.kv2).toFixed(2):'')+'</td><td>'+(it.izoh||'')+'</td></tr>').join('');
   const tot=(n.items||[]).reduce((a,i)=>a+(+i.kv2||0),0).toFixed(2);
+  const totN=(n.items||[]).reduce((a,i)=>a+(parseInt(i.kvo)||0),0);
+  const isProfD=(n.mtur==='Доп Профил');
+  const totLen=(n.items||[]).reduce((a,i)=>a+((parseInt(i.kvo)||0)*(+i.dln||0)),0);
+  const lenTxt=totLen?(totLen/1000).toFixed(2)+' м':'';
   const sgn=(role,name,imzo)=> '<div class="sgn"><b>'+role+'</b> '+(name||'')+' '+(imzo?'<img src="'+imzo+'">':'<span class="muted">— kutilmoqda</span>')+'</div>';
   return '<div class="doc">'+
     '<div class="dr"><div>№ <b>'+(n.nomer||'')+'</b> Внутренняя накладная</div><div class="dtype">'+tur+'</div></div>'+
-    '<div class="dr"><div>Счёт № '+(n.schet||'')+'</div><div>'+(n.mtur||'')+'</div></div>'+
+    '<div class="dr"><div>Счёт WinCAD: '+(n.schet_w||'—')+' · Klaes: '+(n.schet_k||'—')+'</div><div>'+(n.mtur||'')+'</div></div>'+
     '<div class="dr"><div>Цвет: '+(n.rang||'')+'</div><div>'+(n.mahsulot||'')+'</div></div>'+
     (n.tur==='pvh'&&n.profil?'<div>Профил серияси: '+n.profil+'</div>':'')+
     '<table><tr><th>№</th><th>Ед.изм</th><th>Кол-во</th><th>Ширина</th><th>Длина</th><th>Кв²</th><th>Примеч.</th></tr>'+rows+
-    '<tr><td colspan="5" style="text-align:right"><b>Итого:</b></td><td><b>'+tot+'</b></td><td></td></tr></table>'+
+    '<tr><td colspan="2" style="text-align:right"><b>Итого:</b></td><td><b>'+totN+'</b></td><td></td>'+
+    (isProfD?'<td><b>'+lenTxt+'</b></td><td></td>':'<td></td><td><b>'+tot+'</b></td>')+
+    '<td></td></tr></table>'+
+    (n.kamchilik?'<div style="margin-top:4px"><b>Камчилик:</b> '+n.kamchilik+'</div>':'')+
     sgn('ОТК:',n.otk_name,n.otk_imzo)+sgn('Мастер:',n.master_name,n.master_imzo)+sgn('Зав.склад ГП:',n.gp_name,n.gp_imzo)+
     '</div>';
 }
@@ -299,6 +387,21 @@ async function submitSign(){
     else { document.getElementById('doneT').textContent='Imzolandi ✅'; document.getElementById('doneP').textContent='ГП tasdig‘iga yuborildi.'; }
     if(TG) setTimeout(()=>TG.close(), 2500);
   }catch(e){ btn.disabled=false; btn.textContent='✓ Imzolash'; alert('Xato: '+e.message); }
+}
+function askConfirm(msg){
+  return new Promise(res=>{ if(TG && TG.showConfirm){ TG.showConfirm(msg, ok=>res(!!ok)); } else res(window.confirm(msg)); });
+}
+async function submitCancel(){
+  if(!(await askConfirm('❌ Bu накладнойни butunlay BEKOR qilasizmi?\nOTK xabardor qilinadi.'))) return;
+  const btn=document.getElementById('cancelBtn'); btn.disabled=true; btn.textContent='⏳…';
+  try{
+    await api('/api/cancel', { id:NID, sabab: val('cancelReason') });
+    show('v-done');
+    document.getElementById('doneIco').textContent='❌';
+    document.getElementById('doneT').textContent='Bekor qilindi';
+    document.getElementById('doneP').textContent='Накладной bekor qilindi, OTK xabardor qilindi.';
+    if(TG) setTimeout(()=>TG.close(), 2200);
+  }catch(e){ btn.disabled=false; btn.textContent='❌ Накладнойni bekor qilish'; alert('Xato: '+e.message); }
 }
 
 /* ═════════ Canvas imzo (oq fonда — PDF uchun) ═════════ */

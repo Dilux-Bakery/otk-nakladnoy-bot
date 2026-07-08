@@ -3,3 +3,9 @@ config.py
 __pycache__/
 *.pyc
 .env
+
+.env.bak*
+backups/
+cloudflared.exe
+_*.py
+*.pdf

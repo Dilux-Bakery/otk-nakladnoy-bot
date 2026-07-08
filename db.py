@@ -37,20 +37,31 @@ def init():
             id         INTEGER PRIMARY KEY AUTOINCREMENT,
             nomer      TEXT,
             tur        TEXT,                 -- 'alyumin' | 'pvh'
-            schet      TEXT,
+            schet      TEXT,                 -- birlashgan (qidiruv uchun)
+            sistema    TEXT,                 -- (eski)
+            schet_w    TEXT,                 -- Счёт WinCAD
+            schet_k    TEXT,                 -- Счёт Klaes
             mtur       TEXT,                 -- Дверь/Окно
             mahsulot   TEXT,
             rang       TEXT,
             profil     TEXT,
+            kamchilik  TEXT,                 -- OTK yozadi (Operator-2 PDFда yashirin)
             items      TEXT,                 -- JSON ro'yxat
             status     TEXT DEFAULT 'master',
-            otk_id     INTEGER, otk_name    TEXT, otk_imzo    TEXT, otk_at    TEXT,
-            master_id  INTEGER, master_name TEXT, master_imzo TEXT, master_at TEXT,
-            gp_id      INTEGER, gp_name      TEXT, gp_imzo     TEXT, gp_at     TEXT,
+            otk_id     INTEGER, otk_name    TEXT, otk_imzo    TEXT, otk_at    TEXT, otk_ip    TEXT,
+            master_id  INTEGER, master_name TEXT, master_imzo TEXT, master_at TEXT, master_ip TEXT,
+            gp_id      INTEGER, gp_name      TEXT, gp_imzo     TEXT, gp_at     TEXT, gp_ip     TEXT,
             created_at TEXT
         )""")
         c.execute("CREATE INDEX IF NOT EXISTS idx_schet ON nakladnoy(schet)")
         c.execute("CREATE INDEX IF NOT EXISTS idx_status ON nakladnoy(status)")
+        # migratsiya: eski bazaga yangi ustunlar (bo'lmasa)
+        for _col in ("sistema", "schet_w", "schet_k", "kamchilik",
+                     "otk_ip", "master_ip", "gp_ip", "edit_msg", "sign_msg"):
+            try:
+                c.execute(f"ALTER TABLE nakladnoy ADD COLUMN {_col} TEXT")
+            except Exception:
+                pass
 
 
 def _row(r):
@@ -67,14 +78,17 @@ def create(d: dict) -> int:
     with _conn() as c:
         cur = c.execute("""
             INSERT INTO nakladnoy
-              (nomer,tur,schet,mtur,mahsulot,rang,profil,items,status,
-               otk_id,otk_name,otk_imzo,otk_at,created_at)
-            VALUES (?,?,?,?,?,?,?,?,'master',?,?,?,?,?)
+              (nomer,tur,schet,sistema,schet_w,schet_k,mtur,mahsulot,rang,profil,kamchilik,items,status,
+               otk_id,otk_name,otk_imzo,otk_at,otk_ip,created_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,'master',?,?,?,?,?,?)
         """, (
             d.get("nomer", ""), d.get("tur", "alyumin"), d.get("schet", ""),
+            d.get("sistema", ""), d.get("schet_w", ""), d.get("schet_k", ""),
             d.get("mtur", ""), d.get("mahsulot", ""), d.get("rang", ""),
-            d.get("profil", ""), json.dumps(d.get("items", []), ensure_ascii=False),
-            d.get("otk_id"), d.get("otk_name", ""), d.get("otk_imzo", ""), now, now,
+            d.get("profil", ""), d.get("kamchilik", ""),
+            json.dumps(d.get("items", []), ensure_ascii=False),
+            d.get("otk_id"), d.get("otk_name", ""), d.get("otk_imzo", ""), now,
+            d.get("otk_ip", ""), now,
         ))
         return cur.lastrowid
 
@@ -84,7 +98,7 @@ def get(nid: int):
         return _row(c.execute("SELECT * FROM nakladnoy WHERE id=?", (nid,)).fetchone())
 
 
-def sign(nid: int, role: str, uid: int, name: str, imzo: str):
+def sign(nid: int, role: str, uid: int, name: str, imzo: str, ip: str = ""):
     """
     Master yoki ГП imzolaydi. Status tartibini tekshiradi.
     Qaytadi: (ok: bool, xabar/yangi_status, nakladnoy_dict|None)
@@ -102,10 +116,64 @@ def sign(nid: int, role: str, uid: int, name: str, imzo: str):
     with _conn() as c:
         c.execute(
             f"UPDATE nakladnoy SET {role}_id=?, {role}_name=?, {role}_imzo=?, "
-            f"{role}_at=?, status=? WHERE id=?",
-            (uid, name, imzo, now, new_status, nid),
+            f"{role}_at=?, {role}_ip=?, status=? WHERE id=?",
+            (uid, name, imzo, now, ip, new_status, nid),
         )
     return True, new_status, get(nid)
+
+
+def cancel(nid: int, role: str, uid: int, name: str):
+    """Master/ГП o'z navbatida накладнойни BEKOR qiladi (OTK xato to'ldirган bo'lsa).
+    Qaytadi: (ok, status/xato, nakladnoy|None)."""
+    n = get(nid)
+    if not n:
+        return False, "not_found", None
+    if role not in ("master", "gp"):
+        return False, "bad_role", None
+    if n["status"] != role:
+        return False, f"wrong_status:{n['status']}", n
+    with _conn() as c:
+        c.execute("UPDATE nakladnoy SET status='cancelled' WHERE id=?", (nid,))
+    return True, "cancelled", get(nid)
+
+
+def set_status(nid: int, status: str):
+    with _conn() as c:
+        c.execute("UPDATE nakladnoy SET status=? WHERE id=?", (status, nid))
+
+
+def set_edit_msg(nid: int, mid):
+    """OTK ga yuborilган 'Tahrirlash' xabari id'si (tahrirdan keyin o'chirish uchun)."""
+    with _conn() as c:
+        c.execute("UPDATE nakladnoy SET edit_msg=? WHERE id=?", (str(mid) if mid else "", nid))
+
+
+def set_sign_msg(nid: int, mid):
+    """Master/ГП ga yuborilган 'Ko'rib imzolash' xabari id'si (imzodan keyin o'chirish uchun)."""
+    with _conn() as c:
+        c.execute("UPDATE nakladnoy SET sign_msg=? WHERE id=?", (str(mid) if mid else "", nid))
+
+
+def update_for_edit(nid: int, d: dict):
+    """OTK tahriridан keyin: ma'lumot yangilanadi, Master/ГП imzolari bekor, status='master'."""
+    now = _now()
+    with _conn() as c:
+        c.execute("""
+            UPDATE nakladnoy SET
+              nomer=?, tur=?, schet=?, schet_w=?, schet_k=?, mtur=?, mahsulot=?, rang=?, profil=?, kamchilik=?, items=?,
+              otk_imzo=?, otk_at=?, otk_ip=?, status='master',
+              master_id=NULL, master_name='', master_imzo='', master_at=NULL, master_ip='',
+              gp_id=NULL, gp_name='', gp_imzo='', gp_at=NULL, gp_ip=''
+            WHERE id=?
+        """, (
+            d.get("nomer", ""), d.get("tur", "alyumin"), d.get("schet", ""),
+            d.get("schet_w", ""), d.get("schet_k", ""), d.get("mtur", ""),
+            d.get("mahsulot", ""), d.get("rang", ""), d.get("profil", ""),
+            d.get("kamchilik", ""),
+            json.dumps(d.get("items", []), ensure_ascii=False),
+            d.get("otk_imzo", ""), now, d.get("otk_ip", ""), nid,
+        ))
+    return get(nid)
 
 
 def search_by_schet(schet: str, limit: int = 50):
@@ -137,6 +205,18 @@ def list_for_role(role: str, tur: str = None, limit: int = 50):
     return [_row(r) for r in rows]
 
 
+def list_by_user(role: str, uid: int, limit: int = 15):
+    """Foydalanuvchi aralashган накладнойlar: OTK yaratgan / Master|ГП imzolaган (yangi->eski)."""
+    col = {"otk": "otk_id", "master": "master_id", "gp": "gp_id"}.get(role)
+    if not col:
+        return []
+    with _conn() as c:
+        rows = c.execute(
+            f"SELECT * FROM nakladnoy WHERE {col}=? ORDER BY id DESC LIMIT ?", (int(uid), limit)
+        ).fetchall()
+    return [_row(r) for r in rows]
+
+
 def recent(limit: int = 30):
     with _conn() as c:
         rows = c.execute(
@@ -149,7 +229,7 @@ def closed_on(date_str: str):
     """Berilgan kunda YOPILGAN накладнойlar (gp_at sanasi bo'yicha)."""
     with _conn() as c:
         rows = c.execute(
-            "SELECT * FROM nakladnoy WHERE status='closed' AND substr(gp_at,1,10)=? ORDER BY id",
+            "SELECT * FROM nakladnoy WHERE status IN ('closed','accepted') AND substr(gp_at,1,10)=? ORDER BY id",
             (date_str,),
         ).fetchall()
     return [_row(r) for r in rows]
