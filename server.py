@@ -74,6 +74,17 @@ def _client_ip(request: Request) -> str:
     return (request.client.host if request.client else "") or ""
 
 
+def _sig(tur, schet, mtur, rang, profil, items):
+    """накладной mazmuni imzosi — takror aniqlash uchun (izoh/kamchilik hisobga olinmaydi)."""
+    norm = sorted(
+        f"{it.get('kvo','')}/{it.get('shr','')}/{it.get('dln','')}/{it.get('kv2','')}"
+        for it in (items or [])
+    )
+    raw = "|".join([str(tur or ""), str(schet or ""), str(mtur or ""),
+                    str(rang or ""), str(profil or ""), "#".join(norm)])
+    return hashlib.md5(raw.encode("utf-8")).hexdigest()
+
+
 def _gen_pdf(n: dict, chat_id=None) -> bytes:
     """PDF generatsiya. FAQAT Operator-2 (OPERATORS[1]) uchun: landscape (albom) +
     sana bo'sh + kamchilik yashirin. Boshqa hamma uchun — to'liq portret nusxa."""
@@ -217,6 +228,14 @@ async def api_create(request: Request):
     items = n.get("items") or []
     if not items:
         return err("Kamida bitta o‘lcham kiriting")
+    # Takror tekshiruvi — aynan bir xil ma'lumotli накладной bo'lsa yaratmaymiz
+    new_sig = _sig(tur, schet, n.get("mtur", ""), n.get("rang", ""), n.get("profil", ""), items)
+    for ex in db.by_schet_exact(schet_w, schet_k):
+        if ex.get("status") == "cancelled":
+            continue
+        if _sig(ex.get("tur"), ex.get("schet"), ex.get("mtur"),
+                ex.get("rang"), ex.get("profil"), ex.get("items")) == new_sig:
+            return err(f"⚠️ Bu ma'lumotli накладной allaqachon bor (Счёт {ex.get('schet')}). Takror yaratilmadi.", 409)
     nid = db.create({
         "nomer": n.get("nomer", ""), "tur": tur, "schet": schet,
         "schet_w": schet_w, "schet_k": schet_k,

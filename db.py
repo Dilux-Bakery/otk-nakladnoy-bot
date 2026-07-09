@@ -187,6 +187,17 @@ def search_by_schet(schet: str, limit: int = 50):
     return [_row(r) for r in rows]
 
 
+def by_schet_exact(schet_w: str, schet_k: str, limit: int = 50):
+    """Aynan shu schet_w YOKI schet_k bo'yicha накладнойlar (takror tekshiruvi uchun)."""
+    with _conn() as c:
+        rows = c.execute(
+            "SELECT * FROM nakladnoy WHERE (schet_w!='' AND schet_w=?) "
+            "OR (schet_k!='' AND schet_k=?) ORDER BY id DESC LIMIT ?",
+            (schet_w or "", schet_k or "", limit),
+        ).fetchall()
+    return [_row(r) for r in rows]
+
+
 def list_for_role(role: str, tur: str = None, limit: int = 50):
     """Berilgan rol uchun navbatda turган накладнойlar (Master/ГП)."""
     with _conn() as c:
