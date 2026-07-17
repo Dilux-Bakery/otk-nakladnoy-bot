@@ -50,7 +50,8 @@ except Exception:
     WEBAPP_VER = "1"
 
 ROLE_UZ = {"otk": "OTK", "master": "Master", "gp": "Зав.склад ГП",
-           "operator": "Operator", "rahbar": "Ishlab chiqarish rahbari"}
+           "operator": "Operator", "rahbar": "Ishlab chiqarish rahbari",
+           "admin": "Admin (barcha ma'lumot)"}
 SCHET_PREFIXES = ("710", "711", "243", "249")
 
 
@@ -446,7 +447,7 @@ async def on_message(msg):
     if text.startswith("/start"):
         return await on_start(uid, chat_id, role)
     if text.startswith("/hisobot"):
-        if role and role["role"] in ("operator", "rahbar"):
+        if role and role["role"] in ("operator", "rahbar", "admin"):
             return await send_report_to(chat_id, _now_local().strftime("%Y-%m-%d"))
         return await send_message(chat_id, "📊 /hisobot — faqat Operator/Rahbar uchun.")
     if not role:
@@ -478,6 +479,13 @@ async def on_callback(cb):
     if data == "mine":
         await tg("answerCallbackQuery", callback_query_id=cid, text="🗂 …")
         return await send_my_list(chat_id, role["role"], uid)
+
+    # 🛡 Admin — so'nggi barcha накладнойlar
+    if data == "alllist":
+        if role["role"] != "admin":
+            return await tg("answerCallbackQuery", callback_query_id=cid, text="Ruxsat yo‘q")
+        await tg("answerCallbackQuery", callback_query_id=cid, text="🗂 …")
+        return await send_recent_all(chat_id)
 
     try:
         action, sid = data.split(":", 1)
@@ -540,6 +548,17 @@ async def send_my_list(chat_id, role, uid):
                            {"inline_keyboard": [[{"text": "📄 PDF", "callback_data": f"pdf:{n['id']}"}]]})
 
 
+async def send_recent_all(chat_id):
+    """Admin — so'nggi barcha накладнойlar (har biriда 📄 PDF, holat bilan)."""
+    rows = db.recent(20)
+    if not rows:
+        return await send_message(chat_id, "Hozircha накладной yo‘q.")
+    await send_message(chat_id, f"🗂 <b>So‘nggi {len(rows)} накладной</b> (barcha holat):")
+    for n in rows:
+        await send_message(chat_id, _nak_line(n),
+                           {"inline_keyboard": [[{"text": "📄 PDF", "callback_data": f"pdf:{n['id']}"}]]})
+
+
 async def on_start(uid, chat_id, role):
     if not role:
         return await send_message(chat_id, f"👋 Salom! Siz hali ro‘yxatda yo‘qsiz.\nSizning ID: <code>{uid}</code>\nBuni administratorga bering.")
@@ -564,6 +583,12 @@ async def on_start(uid, chat_id, role):
                     n["id"], "✍️ Imzolash")
             return await send_message(chat_id, "Avval imzolaganlaringizni ko‘rish 👇", mine_btn)
         return await send_message(chat_id, f"✅ <b>{ROLE_UZ[r]}</b> — hozircha navbatда yo‘q.", mine_btn)
+    # admin — barcha ma'lumot ko'rinadi
+    if r == "admin":
+        return await send_message(
+            chat_id,
+            "🛡 <b>Admin</b> — barcha накладнойlar ko‘rinadi.\nНакладнойни topish uchun <b>Счёт raqamini</b> yuboring, yoki 👇",
+            {"inline_keyboard": [[{"text": "🗂 So‘nggi накладнойlar", "callback_data": "alllist"}]]})
     # operator / rahbar
     return await send_message(chat_id, f"🔎 <b>{ROLE_UZ[r]}</b>\nНакладнойни topish uchun <b>Счёт raqamini</b> yuboring.")
 
