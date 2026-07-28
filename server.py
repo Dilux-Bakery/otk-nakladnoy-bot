@@ -49,6 +49,16 @@ try:
 except Exception:
     WEBAPP_VER = "1"
 
+
+@app.middleware("http")
+async def _webapp_no_cache(request: Request, call_next):
+    """Webapp'ni Telegram keshlamasin — har safar yangisini yuklaydi."""
+    resp = await call_next(request)
+    if request.url.path.startswith("/webapp"):
+        resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        resp.headers["Pragma"] = "no-cache"
+    return resp
+
 ROLE_UZ = {"otk": "OTK", "master": "Master", "gp": "Зав.склад ГП",
            "operator": "Operator", "rahbar": "Ishlab chiqarish rahbari",
            "admin": "Admin (barcha ma'lumot)"}
