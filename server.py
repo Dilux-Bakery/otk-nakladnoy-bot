@@ -455,6 +455,7 @@ async def on_message(msg):
     role = config.role_of(uid)
 
     if text.startswith("/start"):
+        AWAIT_RETURN.pop(uid, None)
         return await on_start(uid, chat_id, role)
     if text.startswith("/hisobot"):
         if role and role["role"] in ("operator", "rahbar", "admin"):
@@ -462,6 +463,13 @@ async def on_message(msg):
         return await send_message(chat_id, "📊 /hisobot — faqat Operator/Rahbar uchun.")
     if not role:
         return await send_message(chat_id, f"Siz ro‘yxatda yo‘qsiz.\nSizning ID: <code>{uid}</code>")
+    # Qaytarish izohi (sabab) kutilyaptimi? -> OTK ga yuboramiz
+    if uid in AWAIT_RETURN and text and not text.startswith("/"):
+        rnid = AWAIT_RETURN.pop(uid)
+        rn = db.get(rnid)
+        if rn and rn.get("otk_id"):
+            await send_message(rn["otk_id"], f"📝 <b>{_ref(rn)}</b> qaytarish sababi:\n{text}")
+        return await send_message(chat_id, "✅ Izoh OTK‘ga yuborildi.")
     # Har qanday boshqa matn — Счёт bo'yicha qidiruv (harf-raqam ham)
     if text and not text.startswith("/") and len(text) >= 2:
         return await do_search(chat_id, text)
@@ -471,6 +479,9 @@ async def on_message(msg):
 ST_UZ = {"master": "⏳ Master kutilmoqda", "gp": "⏳ ГП kutilmoqda", "closed": "✅ Yopilgan",
          "accepted": "✅ Qabul qilingan", "returned": "↩️ Qaytarilган (tuzatish kerak)",
          "cancelled": "❌ Bekor qilingan"}
+
+# Qaytargan menejer izoh (sabab) yozishi kutilmoqda: uid -> nid
+AWAIT_RETURN = {}
 
 
 async def on_callback(cb):
@@ -537,6 +548,15 @@ async def on_callback(cb):
             emid = ((r or {}).get("result") or {}).get("message_id")
             if emid:
                 db.set_edit_msg(nid, emid)   # OTK tahrirlagach o'chiramiz
+        # ixtiyoriy izoh (sabab) — yozilsa OTK ga yuboriladi
+        AWAIT_RETURN[uid] = nid
+        await send_message(
+            chat_id,
+            f"📝 <b>{_ref(n)}</b> qaytarildi.\nSabab (izoh) yozmoqchi bo‘lsangiz — shu yerga yozing. Izoh ixtiyoriy 👇",
+            {"inline_keyboard": [[{"text": "Izohsiz", "callback_data": f"noreason:{nid}"}]]})
+    elif action == "noreason":
+        AWAIT_RETURN.pop(uid, None)
+        await tg("answerCallbackQuery", callback_query_id=cid, text="Izohsiz qaytarildi")
     else:
         await tg("answerCallbackQuery", callback_query_id=cid)
 
