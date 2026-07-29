@@ -460,7 +460,9 @@ async def on_message(msg):
     if text.startswith("/hisobot"):
         if role and role["role"] in ("operator", "rahbar", "admin"):
             return await send_report_to(chat_id, _now_local().strftime("%Y-%m-%d"))
-        return await send_message(chat_id, "📊 /hisobot — faqat Operator/Rahbar uchun.")
+        if role and role["role"] in ("master", "gp"):
+            return await send_signer_report(chat_id, role["role"], uid, role.get("tur"))
+        return await send_message(chat_id, "📊 /hisobot — Operator/Rahbar/Master uchun.")
     if not role:
         return await send_message(chat_id, f"Siz ro‘yxatda yo‘qsiz.\nSizning ID: <code>{uid}</code>")
     # Qaytarish izohi (sabab) kutilyaptimi? -> OTK ga yuboramiz
@@ -500,6 +502,13 @@ async def on_callback(cb):
     if data == "mine":
         await tg("answerCallbackQuery", callback_query_id=cid, text="🗂 …")
         return await send_my_list(chat_id, role["role"], uid)
+
+    # 📊 Master/ГП hisoboti (imzolangan + kutilmoqda, PDFsiz)
+    if data == "myreport":
+        if role["role"] not in ("master", "gp"):
+            return await tg("answerCallbackQuery", callback_query_id=cid, text="Ruxsat yo‘q")
+        await tg("answerCallbackQuery", callback_query_id=cid, text="📊 …")
+        return await send_signer_report(chat_id, role["role"], uid, role.get("tur"))
 
     # 🛡 Admin — so'nggi barcha накладнойlar
     if data == "alllist":
@@ -578,6 +587,29 @@ async def send_my_list(chat_id, role, uid):
                            {"inline_keyboard": [[{"text": "📄 PDF", "callback_data": f"pdf:{n['id']}"}]]})
 
 
+async def send_signer_report(chat_id, role, uid, tur=None):
+    """Master/ГП uchun PDFsiz hisobot: imzo qo'yilmaganlar (imzolash tugmasi bilan) + imzo qo'yilganlar."""
+    pend = db.list_for_role(role, tur)          # imzo kutilmoqda (status=role)
+    signed = db.list_by_user(role, uid, 20)     # o'zi imzolaganlar
+    head = f"📊 <b>Hisobot — {ROLE_UZ.get(role, role)}</b>"
+    if role == "master" and tur:
+        head += f" ({pdf.TUR_LABEL.get(tur)})"
+    await send_message(
+        chat_id,
+        f"{head}\n\n📋 Imzo qo‘yilmagan: <b>{len(pend)}</b> ta\n✅ Imzo qo‘yilgan: <b>{len(signed)}</b> ta")
+    if pend:
+        await send_message(chat_id, "📋 <b>Imzo qo‘yilmaganlar</b> — imzolash uchun 👇")
+        for n in pend:
+            await _send_sign_req(
+                chat_id,
+                f"<b>Счёт {n['schet']}</b> · {pdf.TUR_LABEL.get(n['tur'])} · {n['mtur']} · {n['rang']}",
+                n["id"], "✍️ Imzolash")
+    if signed:
+        lines = [f"• Счёт {n['schet']} · {pdf.TUR_LABEL.get(n['tur'])} · {n['mtur']} — {ST_UZ.get(n['status'], n['status'])}"
+                 for n in signed]
+        await send_message(chat_id, f"✅ <b>Imzo qo‘yilganlar</b> (oxirgi {len(signed)}):\n" + "\n".join(lines))
+
+
 async def send_recent_all(chat_id):
     """Admin — so'nggi barcha накладнойlar (har biriда 📄 PDF, holat bilan)."""
     rows = db.recent(20)
@@ -603,7 +635,10 @@ async def on_start(uid, chat_id, role):
             ]})
     if r in ("master", "gp"):
         pend = db.list_for_role(r, role.get("tur"))
-        mine_btn = {"inline_keyboard": [[{"text": "🗂 O‘zim imzolaганларим", "callback_data": "mine"}]]}
+        kb = {"inline_keyboard": [
+            [{"text": "📊 Hisobot (imzolangan + kutilmoqda)", "callback_data": "myreport"}],
+            [{"text": "🗂 O‘zim imzolaган", "callback_data": "mine"}],
+        ]}
         if pend:
             await send_message(chat_id, f"📋 <b>{ROLE_UZ[r]}</b> — tasdig‘ingiz kutilayotган {len(pend)} ta:")
             for n in pend:
@@ -611,8 +646,8 @@ async def on_start(uid, chat_id, role):
                     chat_id,
                     f"<b>Счёт {n['schet']}</b> · {pdf.TUR_LABEL.get(n['tur'])} · {n['mtur']} · {n['rang']}",
                     n["id"], "✍️ Imzolash")
-            return await send_message(chat_id, "Avval imzolaganlaringizni ko‘rish 👇", mine_btn)
-        return await send_message(chat_id, f"✅ <b>{ROLE_UZ[r]}</b> — hozircha navbatда yo‘q.", mine_btn)
+            return await send_message(chat_id, "📊 Hisobot yoki avval imzolaganlaringiz 👇", kb)
+        return await send_message(chat_id, f"✅ <b>{ROLE_UZ[r]}</b> — hozircha navbatда yo‘q.", kb)
     # admin — barcha ma'lumot ko'rinadi
     if r == "admin":
         return await send_message(
