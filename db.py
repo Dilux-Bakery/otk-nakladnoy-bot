@@ -155,15 +155,14 @@ def set_sign_msg(nid: int, mid):
 
 
 def update_for_edit(nid: int, d: dict):
-    """OTK tahriridан keyin: ma'lumot yangilanadi, Master/ГП imzolari bekor, status='master'."""
+    """OTK tuzatgach: Master/ГП imzosi SAQLANADI (qayta imzo shart emas), to'g'ridan-to'g'ri
+    qayta YOPILADI (status='closed'). gp_at yangilanadi -> kunlik hisobotда tuzatilgan kuni sanaladi."""
     now = _now()
     with _conn() as c:
         c.execute("""
             UPDATE nakladnoy SET
               nomer=?, tur=?, schet=?, schet_w=?, schet_k=?, mtur=?, mahsulot=?, rang=?, profil=?, kamchilik=?, items=?,
-              otk_imzo=?, otk_at=?, otk_ip=?, status='master',
-              master_id=NULL, master_name='', master_imzo='', master_at=NULL, master_ip='',
-              gp_id=NULL, gp_name='', gp_imzo='', gp_at=NULL, gp_ip=''
+              otk_imzo=?, otk_at=?, otk_ip=?, gp_at=?, status='closed'
             WHERE id=?
         """, (
             d.get("nomer", ""), d.get("tur", "alyumin"), d.get("schet", ""),
@@ -171,7 +170,7 @@ def update_for_edit(nid: int, d: dict):
             d.get("mahsulot", ""), d.get("rang", ""), d.get("profil", ""),
             d.get("kamchilik", ""),
             json.dumps(d.get("items", []), ensure_ascii=False),
-            d.get("otk_imzo", ""), now, d.get("otk_ip", ""), nid,
+            d.get("otk_imzo", ""), now, d.get("otk_ip", ""), now, nid,
         ))
     return get(nid)
 

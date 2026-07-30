@@ -335,7 +335,7 @@ async function submitCreate(){
     if (EDIT_ID) await api('/api/update', { id:EDIT_ID, nakladnoy:nk, imzo:sigCreate });
     else await api('/api/create', { nakladnoy:nk, imzo:sigCreate });
     goPage(4);
-    document.getElementById('okCreate').textContent = EDIT_ID ? ('№'+S.nomer+' — tuzatildi, Master qayta ko‘radi.') : ('№'+S.nomer+' — Master tasdiqlashiga yuborildi.');
+    document.getElementById('okCreate').textContent = EDIT_ID ? ('№'+S.nomer+' — tuzatildi va qayta yopildi.') : ('№'+S.nomer+' — Master tasdiqlashiga yuborildi.');
     if(TG) setTimeout(()=>TG.close(), 2500);
   }catch(e){ btn.disabled=false; btn.textContent='✓ Yuborish'; alert('Xato: '+e.message); }
 }

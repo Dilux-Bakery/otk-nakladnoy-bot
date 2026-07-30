@@ -408,13 +408,8 @@ async def api_update(request: Request):
         except Exception:
             pass
         db.set_edit_msg(nid, "")
-    master = config.MASTER.get(tur)
-    if master and master.get("id"):
-        await _send_sign_req(
-            master["id"],
-            f"✏️ Tuzatildi: накладной <b>{_ref(n2)}</b> ({pdf.TUR_LABEL.get(tur)})\nQayta tasdiqlang 👇",
-            nid,
-        )
+    # Master/ГП qayta imzolamaydi — to'g'ridan-to'g'ri operatorlarga qayta tarqatiladi
+    await distribute_pdf(n2)
     return {"ok": True, "id": nid}
 
 
