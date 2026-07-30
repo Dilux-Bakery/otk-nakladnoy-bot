@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dilux — Jonli Sex (3D)</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{height:100%;overflow:hidden;background:#0b1020;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e8ecf5;}
+  #c{position:fixed;inset:0;display:block;}
+  .glass{background:rgba(20,28,52,.72);backdrop-filter:blur(10px);border:1px solid rgba(120,150,220,.18);border-radius:14px;}
+  #top{position:fixed;top:12px;left:12px;right:12px;display:flex;gap:10px;align-items:stretch;z-index:10;flex-wrap:wrap;}
+  #title{padding:12px 16px;display:flex;flex-direction:column;justify-content:center;}
+  #title b{font-size:16px;font-weight:700;letter-spacing:.3px;}
+  #title span{font-size:11px;color:#8ea3c9;margin-top:2px;}
+  .stat{padding:10px 16px;display:flex;flex-direction:column;justify-content:center;min-width:96px;}
+  .stat .k{font-size:10px;color:#8ea3c9;text-transform:uppercase;letter-spacing:.5px;}
+  .stat .v{font-size:20px;font-weight:700;margin-top:2px;}
+  .stat .v small{font-size:12px;color:#8ea3c9;font-weight:500;}
+  .alu{color:#7cc4ff;} .pvh{color:#c4a5ff;} .tot{color:#7CFFB0;}
+  #clock{margin-left:auto;padding:10px 16px;display:flex;flex-direction:column;justify-content:center;align-items:flex-end;}
+  #clock b{font-size:18px;font-variant-numeric:tabular-nums;} #clock span{font-size:10px;color:#8ea3c9;}
+  #live{display:inline-flex;align-items:center;gap:6px;font-size:10px;color:#7CFFB0;}
+  #dot{width:8px;height:8px;border-radius:50%;background:#28d17c;box-shadow:0 0 8px #28d17c;animation:pulse 1.6s infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  #dot.off{background:#ff5a5a;box-shadow:0 0 8px #ff5a5a;}
+  .lab{position:fixed;transform:translate(-50%,-100%);pointer-events:none;z-index:5;text-align:center;white-space:nowrap;transition:opacity .3s;}
+  .lab .nm{font-size:11px;color:#cdd8f0;text-shadow:0 1px 3px #000;}
+  .lab .ct{font-size:22px;font-weight:800;line-height:1;text-shadow:0 2px 6px rgba(0,0,0,.6);}
+  .lab .ct.bump{animation:bump .5s;}
+  @keyframes bump{0%{transform:scale(1)}40%{transform:scale(1.5)}100%{transform:scale(1)}}
+  #ticker{position:fixed;bottom:12px;left:12px;right:12px;z-index:10;padding:10px 14px;display:flex;gap:8px;align-items:center;overflow:hidden;}
+  #ticker .h{font-size:11px;color:#8ea3c9;text-transform:uppercase;letter-spacing:.5px;flex-shrink:0;}
+  #trow{display:flex;gap:8px;overflow:hidden;flex:1;}
+  .chip{font-size:12px;padding:5px 10px;border-radius:8px;background:rgba(120,150,220,.12);white-space:nowrap;flex-shrink:0;}
+  .chip b{color:#e8ecf5;} .chip .s{opacity:.7;font-size:11px;}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="top">
+  <div class="glass" id="title"><b>🏭 Dilux — Jonli Sex</b><span>Накладной jarayoni · real vaqtда</span></div>
+  <div class="glass stat"><div class="k">Алюминь bugun</div><div class="v alu" id="s-alu">0 <small>м²</small></div></div>
+  <div class="glass stat"><div class="k">ПВХ bugun</div><div class="v pvh" id="s-pvh">0 <small>м²</small></div></div>
+  <div class="glass stat"><div class="k">Jami yopildi</div><div class="v tot" id="s-tot">0 <small>та</small></div></div>
+  <div class="glass" id="clock"><b id="cl-t">--:--:--</b><span id="live"><i id="dot"></i> <i id="cl-s">ulanmoqda…</i></span></div>
+</div>
+
+<div id="labels"></div>
+
+<div class="glass" id="ticker">
+  <div class="h">Oxirgi</div>
+  <div id="trow"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const TOKEN = "__TOKEN__";
+const STATIONS = [
+  {key:'otk',        nm:'OTK · kirish',        pos:[-11,0],  col:0x3B82F6, ck:'otk_today'},
+  {key:'master_alu', nm:'Master · Алюминь',    pos:[-4,-4],  col:0x8B5CF6, ck:'master_alu'},
+  {key:'master_pvh', nm:'Master · ПВХ',        pos:[-4,4],   col:0xA855F7, ck:'master_pvh'},
+  {key:'gp',         nm:'ГП',                  pos:[3,0],    col:0x14B8A6, ck:'gp'},
+  {key:'closed',     nm:'Ombor / Operatorlar', pos:[10,0],   col:0x22C55E, ck:'closed'},
+  {key:'returned',   nm:'Qaytarilgan',         pos:[3,8],    col:0xF59E0B, ck:'returned'},
+  {key:'cancelled',  nm:'Bekor',               pos:[10,8],   col:0xEF4444, ck:'cancelled'},
+];
+const FLOWS = [['otk','master_alu'],['otk','master_pvh'],['master_alu','gp'],['master_pvh','gp'],['gp','closed']];
+const ST_UZ = {master:'⏳ Master',gp:'⏳ ГП',closed:'✅ Yopilgan',accepted:'✅ Qabul',returned:'↩️ Qaytarilgan',cancelled:'❌ Bekor'};
+const TUR = {alyumin:'Алюминь',pvh:'ПВХ'};
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x0b1020, 40, 80);
+const renderer = new THREE.WebGLRenderer({canvas:document.getElementById('c'),antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+let cam;
+function setCam(){
+  const a = innerWidth/innerHeight, d = 25;
+  cam = new THREE.OrthographicCamera(-d*a,d*a,d,-d,-100,200);
+  cam.position.set(28,26,30); cam.lookAt(0,0,2);
+}
+setCam();
+function resize(){ renderer.setSize(innerWidth,innerHeight); setCam(); }
+addEventListener('resize',resize); resize();
+
+// yorug'lik
+scene.add(new THREE.AmbientLight(0x8090c0,0.8));
+const key = new THREE.DirectionalLight(0xffffff,0.9); key.position.set(18,30,12);
+key.castShadow=true; key.shadow.mapSize.set(2048,2048);
+key.shadow.camera.left=-40;key.shadow.camera.right=40;key.shadow.camera.top=40;key.shadow.camera.bottom=-40;
+scene.add(key);
+scene.add(new THREE.HemisphereLight(0x5570c0,0x0b1020,0.5));
+
+// pol
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(60,44), new THREE.MeshStandardMaterial({color:0x141c34,roughness:1}));
+floor.rotation.x=-Math.PI/2; floor.position.y=-0.02; floor.receiveShadow=true; scene.add(floor);
+const grid = new THREE.GridHelper(60,30,0x2a3a66,0x1c2848); grid.position.y=0; scene.add(grid);
+
+const V3 = (s)=>new THREE.Vector3(s.pos[0], 0, s.pos[1]);
+const byKey = {}; STATIONS.forEach(s=>byKey[s.key]=s);
+
+// oqim chiziqlari + zarralar
+const flowParts = [];
+FLOWS.forEach(([a,b])=>{
+  const pa=V3(byKey[a]), pb=V3(byKey[b]);
+  const geo=new THREE.BufferGeometry().setFromPoints([pa.clone().setY(0.4),pb.clone().setY(0.4)]);
+  scene.add(new THREE.Line(geo,new THREE.LineBasicMaterial({color:0x3a4f8a,transparent:true,opacity:.5})));
+  for(let i=0;i<3;i++){
+    const m=new THREE.Mesh(new THREE.SphereGeometry(0.16,8,8),new THREE.MeshBasicMaterial({color:0x7cc4ff}));
+    m.userData={a:pa,b:pb,t:Math.random()}; scene.add(m); flowParts.push(m);
+  }
+});
+
+// stansiya stollari + накладной qutilari
+const desks={};
+STATIONS.forEach(s=>{
+  const g=new THREE.Group(); g.position.copy(V3(s));
+  const base=new THREE.Mesh(new THREE.BoxGeometry(3.4,0.5,2.6),new THREE.MeshStandardMaterial({color:0x1b2444,roughness:.8}));
+  base.position.y=0.25; base.castShadow=true; base.receiveShadow=true; g.add(base);
+  const top=new THREE.Mesh(new THREE.BoxGeometry(3.6,0.18,2.8),new THREE.MeshStandardMaterial({color:s.col,emissive:s.col,emissiveIntensity:.35,roughness:.5}));
+  top.position.y=0.55; g.add(top);
+  scene.add(g);
+  // label
+  const lab=document.createElement('div'); lab.className='lab';
+  lab.innerHTML=`<div class="ct" style="color:#${s.col.toString(16).padStart(6,'0')}">0</div><div class="nm">${s.nm}</div>`;
+  document.getElementById('labels').appendChild(lab);
+  desks[s.key]={group:g,boxes:[],count:0,lab,ctEl:lab.querySelector('.ct'),col:s.col};
+});
+
+function boxMat(){ return new THREE.MeshStandardMaterial({color:0xf4f1e6,roughness:.7}); }
+function setCount(key,n){
+  const d=desks[key]; if(!d) return;
+  const cap=Math.min(n,18);
+  if(n!==d.count){ d.ctEl.textContent=n; d.ctEl.classList.remove('bump'); void d.ctEl.offsetWidth; d.ctEl.classList.add('bump'); d.count=n; }
+  while(d.boxes.length<cap){
+    const i=d.boxes.length; const b=new THREE.Mesh(new THREE.BoxGeometry(0.62,0.16,0.44),boxMat());
+    const col=i%3, row=Math.floor(i/3);
+    b.position.set(-0.65+col*0.65, 0.72+row*0.18, -0.5+((i%2)?0.5:0));
+    b.castShadow=true; b.userData.y=b.position.y; b.position.y+=6; b.scale.set(0,0,0);
+    d.group.add(b); d.boxes.push(b);
+  }
+  while(d.boxes.length>cap){ const b=d.boxes.pop(); d.group.remove(b); }
+}
+
+// —— header/ticker
+function fmt(x){ return (Math.round(x*100)/100).toFixed(2); }
+function paint(data){
+  document.getElementById('s-alu').innerHTML = fmt(data.today.alu_m2)+' <small>м² · '+data.today.alu_n+' та</small>';
+  document.getElementById('s-pvh').innerHTML = fmt(data.today.pvh_m2)+' <small>м² · '+data.today.pvh_n+' та</small>';
+  document.getElementById('s-tot').innerHTML = data.today.total_n+' <small>та · '+fmt(data.today.total_m2)+' м²</small>';
+  document.getElementById('cl-t').textContent = data.ts;
+  STATIONS.forEach(s=> setCount(s.key, data.stages[s.ck]||0));
+  const tr=document.getElementById('trow'); tr.innerHTML='';
+  (data.recent||[]).forEach(n=>{
+    const c=document.createElement('div'); c.className='chip';
+    c.innerHTML=`<b>Счёт ${n.schet||'—'}</b> <span class="s">· ${TUR[n.tur]||n.tur} · ${n.mtur||''} · ${ST_UZ[n.status]||n.status}</span>`;
+    tr.appendChild(c);
+  });
+}
+
+let lastOk=0;
+async function poll(){
+  try{
+    const r=await fetch('/api/flow?token='+encodeURIComponent(TOKEN),{cache:'no-store'});
+    if(!r.ok) throw new Error(r.status);
+    paint(await r.json()); lastOk=Date.now();
+    document.getElementById('dot').classList.remove('off'); document.getElementById('cl-s').textContent='jonli';
+  }catch(e){
+    document.getElementById('dot').classList.add('off'); document.getElementById('cl-s').textContent='ulanmadi';
+  }
+}
+poll(); setInterval(poll,4000);
+
+// label projeksiya + animatsiya
+const tmp=new THREE.Vector3();
+function project(v){ tmp.copy(v); tmp.project(cam); return {x:(tmp.x*.5+.5)*innerWidth, y:(-tmp.y*.5+.5)*innerHeight}; }
+const clock=new THREE.Clock();
+function loop(){
+  const dt=clock.getDelta();
+  flowParts.forEach(p=>{ p.userData.t+=dt*0.28; if(p.userData.t>1)p.userData.t-=1;
+    p.position.lerpVectors(p.userData.a,p.userData.b,p.userData.t); p.position.y=0.4+Math.sin(p.userData.t*Math.PI)*0.3; });
+  Object.values(desks).forEach(d=> d.boxes.forEach(b=>{
+    b.position.y += (b.userData.y - b.position.y)*Math.min(1,dt*8);
+    const sc=b.scale.x + (1-b.scale.x)*Math.min(1,dt*8); b.scale.set(sc,sc,sc);
+  }));
+  STATIONS.forEach(s=>{ const d=desks[s.key]; const p=project(V3(s).setY(1.6));
+    d.lab.style.left=p.x+'px'; d.lab.style.top=p.y+'px'; d.lab.style.opacity=(tmp.z<1?1:0); });
+  renderer.render(scene,cam);
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>

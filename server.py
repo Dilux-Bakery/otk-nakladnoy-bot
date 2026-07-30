@@ -31,7 +31,7 @@ for _s in (sys.stdout, sys.stderr):
 
 import httpx
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 import config
@@ -41,6 +41,7 @@ import pdf
 app = FastAPI()
 API = f"https://api.telegram.org/bot{config.BOT_TOKEN}"
 WEBHOOK_SECRET = hashlib.sha256(("wh:" + config.BOT_TOKEN).encode()).hexdigest()[:40]
+PANEL_TOKEN = hashlib.sha256(("panel:" + config.BOT_TOKEN).encode()).hexdigest()[:32]
 
 # Webapp versiyasi (kesh-buster) — index.html o'zgarsa avtomat yangilanadi -> Telegram yangisini yuklaydi
 _WEBAPP_INDEX = os.path.join(os.path.dirname(os.path.abspath(__file__)), "webapp", "index.html")
@@ -799,6 +800,50 @@ async def _startup():
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 app.mount("/webapp", StaticFiles(directory=os.path.join(_HERE, "webapp"), html=True), name="webapp")
+
+
+# ════════════════ Jonli 3D panel ════════════════
+def build_flow_data():
+    today = _now_local().strftime("%Y-%m-%d")
+    stages = db.panel_snapshot(today)
+    recs = db.closed_on(today)
+    agg = {"alyumin": [0, 0.0], "pvh": [0, 0.0]}
+    mosk = 0
+    for n in recs:
+        if (n.get("mtur") or "").startswith("Москит"):
+            mosk += 1
+            continue
+        t = n["tur"] if n["tur"] in agg else "alyumin"
+        agg[t][0] += 1
+        agg[t][1] += db.total_area(n["items"])
+    a, p = agg["alyumin"], agg["pvh"]
+    recent = [{"schet": n.get("schet", ""), "tur": n["tur"],
+               "mtur": n.get("mtur", ""), "status": n["status"]} for n in db.recent(8)]
+    return {
+        "ts": _now_local().strftime("%H:%M:%S"),
+        "stages": stages,
+        "today": {"alu_n": a[0], "alu_m2": round(a[1], 2), "pvh_n": p[0], "pvh_m2": round(p[1], 2),
+                  "total_n": a[0] + p[0], "total_m2": round(a[1] + p[1], 2), "mosk": mosk},
+        "recent": recent,
+    }
+
+
+@app.get("/panel")
+async def panel(token: str = ""):
+    if token != PANEL_TOKEN:
+        return JSONResponse(status_code=403, content={"error": "forbidden"})
+    try:
+        html = open(os.path.join(_HERE, "panel", "index.html"), encoding="utf-8").read()
+        return HTMLResponse(html.replace("__TOKEN__", PANEL_TOKEN))
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@app.get("/api/flow")
+async def api_flow(token: str = ""):
+    if token != PANEL_TOKEN:
+        return JSONResponse(status_code=403, content={"error": "forbidden"})
+    return build_flow_data()
 
 
 @app.get("/")

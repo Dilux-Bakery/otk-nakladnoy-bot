@@ -245,6 +245,22 @@ def closed_on(date_str: str):
     return [_row(r) for r in rows]
 
 
+def panel_snapshot(today: str):
+    """Jonli 3D panel uchun bosqichlar bo'yicha sanoq."""
+    with _conn() as c:
+        def cnt(where, args=()):
+            return c.execute("SELECT COUNT(*) FROM nakladnoy WHERE " + where, args).fetchone()[0]
+        return {
+            "otk_today":   cnt("substr(created_at,1,10)=?", (today,)),
+            "master_alu":  cnt("status='master' AND tur='alyumin'"),
+            "master_pvh":  cnt("status='master' AND tur='pvh'"),
+            "gp":          cnt("status='gp'"),
+            "closed":      cnt("status='closed'"),
+            "returned":    cnt("status='returned'"),
+            "cancelled":   cnt("status='cancelled'"),
+        }
+
+
 def total_area(items):
     return round(sum(float(i.get("kv2", 0) or 0) for i in items), 4)
 
