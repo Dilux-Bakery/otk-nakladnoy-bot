@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dilux — Jonli Sex (3D)</title>
+<title>Имзо фабрика (3D)</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box;}
   html,body{height:100%;overflow:hidden;background:#0b1020;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e8ecf5;}
@@ -40,7 +40,7 @@
 <canvas id="c"></canvas>
 
 <div id="top">
-  <div class="glass" id="title"><b>🏭 Dilux — Jonli Sex</b><span>Накладной jarayoni · real vaqtда</span></div>
+  <div class="glass" id="title"><b>🏭 Имзо фабрика</b><span>Накладной jarayoni · real vaqtда</span></div>
   <div class="glass stat"><div class="k">Алюминь bugun</div><div class="v alu" id="s-alu">0 <small>м²</small></div></div>
   <div class="glass stat"><div class="k">ПВХ bugun</div><div class="v pvh" id="s-pvh">0 <small>м²</small></div></div>
   <div class="glass stat"><div class="k">Jami yopildi</div><div class="v tot" id="s-tot">0 <small>та</small></div></div>
@@ -58,7 +58,8 @@
 <script>
 const TOKEN = "__TOKEN__";
 const STATIONS = [
-  {key:'otk',        nm:'OTK · kirish',        pos:[-11,0],  col:0x3B82F6, ck:'otk_today'},
+  {key:'otk_alu',    nm:'OTK · Алюминь',       pos:[-11,-4], col:0x3B82F6, ck:'otk_alu'},
+  {key:'otk_pvh',    nm:'OTK · ПВХ',           pos:[-11,4],  col:0x60A5FA, ck:'otk_pvh'},
   {key:'master_alu', nm:'Master · Алюминь',    pos:[-4,-4],  col:0x8B5CF6, ck:'master_alu'},
   {key:'master_pvh', nm:'Master · ПВХ',        pos:[-4,4],   col:0xA855F7, ck:'master_pvh'},
   {key:'gp',         nm:'ГП',                  pos:[3,0],    col:0x14B8A6, ck:'gp'},
@@ -66,7 +67,7 @@ const STATIONS = [
   {key:'returned',   nm:'Qaytarilgan',         pos:[3,8],    col:0xF59E0B, ck:'returned'},
   {key:'cancelled',  nm:'Bekor',               pos:[10,8],   col:0xEF4444, ck:'cancelled'},
 ];
-const FLOWS = [['otk','master_alu'],['otk','master_pvh'],['master_alu','gp'],['master_pvh','gp'],['gp','closed']];
+const FLOWS = [['otk_alu','master_alu'],['otk_pvh','master_pvh'],['master_alu','gp'],['master_pvh','gp'],['gp','closed']];
 const ST_UZ = {master:'⏳ Master',gp:'⏳ ГП',closed:'✅ Yopilgan',accepted:'✅ Qabul',returned:'↩️ Qaytarilgan',cancelled:'❌ Bekor'};
 const TUR = {alyumin:'Алюминь',pvh:'ПВХ'};
 
