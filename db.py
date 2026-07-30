@@ -227,6 +227,16 @@ def list_by_user(role: str, uid: int, limit: int = 15):
     return [_row(r) for r in rows]
 
 
+def returned_for_otk(uid: int, limit: int = 20):
+    """Shu OTK ning qaytarilgan (tuzatilishi kerak) накладнойlari."""
+    with _conn() as c:
+        rows = c.execute(
+            "SELECT * FROM nakladnoy WHERE status='returned' AND otk_id=? ORDER BY id DESC LIMIT ?",
+            (int(uid), limit),
+        ).fetchall()
+    return [_row(r) for r in rows]
+
+
 def recent(limit: int = 30):
     with _conn() as c:
         rows = c.execute(

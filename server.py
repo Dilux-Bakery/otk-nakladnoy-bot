@@ -499,6 +499,13 @@ async def on_callback(cb):
         await tg("answerCallbackQuery", callback_query_id=cid, text="🗂 …")
         return await send_my_list(chat_id, role["role"], uid)
 
+    # ↩️ OTK — tahrirlanishi kerak (qaytarilgan)
+    if data == "toedit":
+        if role["role"] != "otk":
+            return await tg("answerCallbackQuery", callback_query_id=cid, text="Ruxsat yo‘q")
+        await tg("answerCallbackQuery", callback_query_id=cid, text="↩️ …")
+        return await send_toedit_list(chat_id, uid)
+
     # 📊 Master/ГП hisoboti (imzolangan + kutilmoqda, PDFsiz)
     if data == "myreport":
         if role["role"] not in ("master", "gp"):
@@ -606,6 +613,16 @@ async def send_signer_report(chat_id, role, uid, tur=None):
         await send_message(chat_id, f"✅ <b>Imzo qo‘yilganlar</b> (oxirgi {len(signed)}):\n" + "\n".join(lines))
 
 
+async def send_toedit_list(chat_id, uid):
+    """OTK — tahrirlanishi kerak (qaytarilgan) накладнойlar, har biriда ✏️ Tahrirlash."""
+    rows = db.returned_for_otk(uid)
+    if not rows:
+        return await send_message(chat_id, "↩️ <b>Tahrirlanishi kerak</b>\n\nHozircha yo‘q — hammasi joyida ✅")
+    await send_message(chat_id, f"↩️ <b>Tahrirlanishi kerak</b> ({len(rows)} ta) — tuzatib yuboring 👇")
+    for n in rows:
+        await send_message(chat_id, _nak_line(n), webapp_btn("✏️ Tahrirlash", "edit", n["id"]))
+
+
 async def send_recent_all(chat_id):
     """Admin — so'nggi barcha накладнойlar (har biriда 📄 PDF, holat bilan)."""
     rows = db.recent(20)
@@ -623,10 +640,13 @@ async def on_start(uid, chat_id, role):
     r = role["role"]
     if r == "otk":
         create_url = f"{config.BASE_URL}/webapp/?v={WEBAPP_VER}&mode=create"
+        ret_n = len(db.returned_for_otk(uid))
+        ed_txt = f"↩️ Tahrirlanishi kerak ({ret_n})" if ret_n else "↩️ Tahrirlanishi kerak"
         return await send_message(
-            chat_id, "👷 <b>OTK</b>\nYangi накладной yaratish yoki avval to‘ldirganlaringizni ko‘rish 👇",
+            chat_id, "👷 <b>OTK</b>\nYangi накладной yaratish, tuzatilishi kerak bo‘lganlar yoki avvalgilar 👇",
             {"inline_keyboard": [
                 [{"text": "➕ Накладной yaratish", "web_app": {"url": create_url}}],
+                [{"text": ed_txt, "callback_data": "toedit"}],
                 [{"text": "🗂 O‘zim to‘ldirganlarim", "callback_data": "mine"}],
             ]})
     if r in ("master", "gp"):
