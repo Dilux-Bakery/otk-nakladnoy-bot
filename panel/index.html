@@ -6,34 +6,52 @@
 <title>Имзо фабрика (3D)</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box;}
-  html,body{height:100%;overflow:hidden;background:#0b1020;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e8ecf5;}
+  html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#e8ecf5;
+    background:radial-gradient(120% 90% at 30% 0%, #16203f 0%, #0a0f1f 55%, #06080f 100%);}
   #c{position:fixed;inset:0;display:block;}
-  .glass{background:rgba(20,28,52,.72);backdrop-filter:blur(10px);border:1px solid rgba(120,150,220,.18);border-radius:14px;}
-  #top{position:fixed;top:12px;left:12px;right:12px;display:flex;gap:10px;align-items:stretch;z-index:10;flex-wrap:wrap;}
-  #title{padding:12px 16px;display:flex;flex-direction:column;justify-content:center;}
-  #title b{font-size:16px;font-weight:700;letter-spacing:.3px;}
-  #title span{font-size:11px;color:#8ea3c9;margin-top:2px;}
-  .stat{padding:10px 16px;display:flex;flex-direction:column;justify-content:center;min-width:96px;}
-  .stat .k{font-size:10px;color:#8ea3c9;text-transform:uppercase;letter-spacing:.5px;}
-  .stat .v{font-size:20px;font-weight:700;margin-top:2px;}
-  .stat .v small{font-size:12px;color:#8ea3c9;font-weight:500;}
-  .alu{color:#7cc4ff;} .pvh{color:#c4a5ff;} .tot{color:#7CFFB0;}
-  #clock{margin-left:auto;padding:10px 16px;display:flex;flex-direction:column;justify-content:center;align-items:flex-end;}
-  #clock b{font-size:18px;font-variant-numeric:tabular-nums;} #clock span{font-size:10px;color:#8ea3c9;}
-  #live{display:inline-flex;align-items:center;gap:6px;font-size:10px;color:#7CFFB0;}
-  #dot{width:8px;height:8px;border-radius:50%;background:#28d17c;box-shadow:0 0 8px #28d17c;animation:pulse 1.6s infinite;}
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
-  #dot.off{background:#ff5a5a;box-shadow:0 0 8px #ff5a5a;}
+  .glass{background:rgba(18,26,50,.62);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    border:1px solid rgba(130,160,230,.16);border-radius:16px;box-shadow:0 8px 30px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.04);}
+  #top{position:fixed;top:14px;left:14px;right:14px;display:flex;gap:10px;align-items:stretch;z-index:10;flex-wrap:wrap;}
+  #title{padding:12px 18px;display:flex;flex-direction:column;justify-content:center;}
+  #title b{font-size:17px;font-weight:700;letter-spacing:.3px;display:flex;align-items:center;gap:8px;}
+  #title span{font-size:11px;color:#8ea3c9;margin-top:3px;letter-spacing:.3px;}
+  .stat{padding:9px 16px;display:flex;flex-direction:column;justify-content:center;min-width:92px;position:relative;overflow:hidden;}
+  .stat::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:3px;}
+  .stat.a::before{background:#59a9ff;box-shadow:0 0 10px #59a9ff;} .stat.p::before{background:#b98bff;box-shadow:0 0 10px #b98bff;}
+  .stat.t::before{background:#57e39a;box-shadow:0 0 10px #57e39a;}
+  .stat .k{font-size:10px;color:#8ea3c9;text-transform:uppercase;letter-spacing:.6px;}
+  .stat .v{font-size:20px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums;}
+  .stat .v small{font-size:11px;color:#8ea3c9;font-weight:500;}
+  .a .v{color:#8fc6ff;} .p .v{color:#cbb0ff;} .t .v{color:#7CFFB0;}
+  #clock{margin-left:auto;padding:9px 16px;display:flex;flex-direction:column;justify-content:center;align-items:flex-end;}
+  #clock b{font-size:19px;font-variant-numeric:tabular-nums;letter-spacing:1px;}
+  #live{display:inline-flex;align-items:center;gap:6px;font-size:10px;color:#7CFFB0;margin-top:2px;}
+  #dot{width:8px;height:8px;border-radius:50%;background:#28d17c;box-shadow:0 0 10px #28d17c;animation:pulse 1.8s infinite;}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  #dot.off{background:#ff5a5a;box-shadow:0 0 10px #ff5a5a;}
+  #side{position:fixed;top:88px;right:14px;width:230px;z-index:10;padding:14px 16px;}
+  #side .sh{font-size:12px;font-weight:700;color:#cdd8f0;letter-spacing:.4px;margin-bottom:10px;display:flex;align-items:center;gap:7px;}
+  .sec{margin-bottom:14px;} .sec:last-child{margin-bottom:0;}
+  .sec .t{font-size:10px;color:#8ea3c9;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;}
+  .brow{display:flex;align-items:center;gap:8px;margin-bottom:7px;}
+  .bl{font-size:11px;width:52px;flex-shrink:0;} .bl.alu{color:#8fc6ff;} .bl.pvh{color:#cbb0ff;}
+  .bar{flex:1;height:7px;border-radius:4px;background:rgba(130,160,230,.12);overflow:hidden;}
+  .bar i{display:block;height:100%;width:0;border-radius:4px;transition:width .6s cubic-bezier(.4,0,.2,1);}
+  .bar i.alu{background:linear-gradient(90deg,#3B82F6,#7cc4ff);} .bar i.pvh{background:linear-gradient(90deg,#8B5CF6,#c4a5ff);}
+  .bv{font-size:12px;font-weight:700;width:56px;text-align:right;font-variant-numeric:tabular-nums;color:#cdd8f0;}
+  .kv{display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:4px 0;color:#b7c4de;}
+  .kv b{font-size:14px;font-variant-numeric:tabular-nums;color:#e8ecf5;} .kv b.warn{color:#ffcf6b;} .kv b.bad{color:#ff8a8a;}
   .lab{position:fixed;transform:translate(-50%,-100%);pointer-events:none;z-index:5;text-align:center;white-space:nowrap;transition:opacity .3s;}
-  .lab .nm{font-size:11px;color:#cdd8f0;text-shadow:0 1px 3px #000;}
-  .lab .ct{font-size:22px;font-weight:800;line-height:1;text-shadow:0 2px 6px rgba(0,0,0,.6);}
-  .lab .ct.bump{animation:bump .5s;}
-  @keyframes bump{0%{transform:scale(1)}40%{transform:scale(1.5)}100%{transform:scale(1)}}
-  #ticker{position:fixed;bottom:12px;left:12px;right:12px;z-index:10;padding:10px 14px;display:flex;gap:8px;align-items:center;overflow:hidden;}
-  #ticker .h{font-size:11px;color:#8ea3c9;text-transform:uppercase;letter-spacing:.5px;flex-shrink:0;}
-  #trow{display:flex;gap:8px;overflow:hidden;flex:1;}
-  .chip{font-size:12px;padding:5px 10px;border-radius:8px;background:rgba(120,150,220,.12);white-space:nowrap;flex-shrink:0;}
-  .chip b{color:#e8ecf5;} .chip .s{opacity:.7;font-size:11px;}
+  .lab .nm{font-size:11px;color:#cdd8f0;text-shadow:0 1px 4px #000;letter-spacing:.2px;}
+  .lab .ct{font-size:24px;font-weight:800;line-height:1;text-shadow:0 2px 8px rgba(0,0,0,.7);}
+  .lab .ct.bump{animation:bump .55s cubic-bezier(.3,1.6,.5,1);}
+  @keyframes bump{0%{transform:scale(1)}40%{transform:scale(1.55)}100%{transform:scale(1)}}
+  #ticker{position:fixed;bottom:14px;left:14px;right:254px;z-index:10;padding:10px 14px;display:flex;gap:10px;align-items:center;overflow:hidden;}
+  #ticker .h{font-size:11px;color:#8ea3c9;text-transform:uppercase;letter-spacing:.6px;flex-shrink:0;}
+  #trow{display:flex;gap:8px;overflow:hidden;flex:1;-webkit-mask:linear-gradient(90deg,#000 85%,transparent);}
+  .chip{font-size:12px;padding:6px 11px;border-radius:9px;background:rgba(130,160,230,.1);white-space:nowrap;flex-shrink:0;border:1px solid rgba(130,160,230,.08);}
+  .chip b{color:#e8ecf5;} .chip .s{opacity:.65;font-size:11px;}
+  @media(max-width:820px){#side{display:none;}#ticker{right:14px;}}
 </style>
 </head>
 <body>
@@ -41,23 +59,36 @@
 
 <div id="top">
   <div class="glass" id="title"><b>🏭 Имзо фабрика</b><span>Накладной jarayoni · real vaqtда</span></div>
-  <div class="glass stat"><div class="k">Алюминь bugun</div><div class="v alu" id="s-alu">0 <small>м²</small></div></div>
-  <div class="glass stat"><div class="k">ПВХ bugun</div><div class="v pvh" id="s-pvh">0 <small>м²</small></div></div>
-  <div class="glass stat"><div class="k">Jami yopildi</div><div class="v tot" id="s-tot">0 <small>та</small></div></div>
+  <div class="glass stat a"><div class="k">Алюминь bugun</div><div class="v" id="s-alu">0 <small>м²</small></div></div>
+  <div class="glass stat p"><div class="k">ПВХ bugun</div><div class="v" id="s-pvh">0 <small>м²</small></div></div>
+  <div class="glass stat t"><div class="k">Jami yopildi</div><div class="v" id="s-tot">0 <small>та</small></div></div>
   <div class="glass" id="clock"><b id="cl-t">--:--:--</b><span id="live"><i id="dot"></i> <i id="cl-s">ulanmoqda…</i></span></div>
 </div>
 
-<div id="labels"></div>
-
-<div class="glass" id="ticker">
-  <div class="h">Oxirgi</div>
-  <div id="trow"></div>
+<div class="glass" id="side">
+  <div class="sh">📊 Statistika</div>
+  <div class="sec"><div class="t">Bugun yopilgan (м²)</div>
+    <div class="brow"><span class="bl alu">Алюминь</span><div class="bar"><i class="alu" id="bar-alu"></i></div><span class="bv" id="bv-alu">0</span></div>
+    <div class="brow"><span class="bl pvh">ПВХ</span><div class="bar"><i class="pvh" id="bar-pvh"></i></div><span class="bv" id="bv-pvh">0</span></div>
+  </div>
+  <div class="sec"><div class="t">Jarayonда</div>
+    <div class="kv"><span>Master (imzo kutmoqda)</span><b id="k-master">0</b></div>
+    <div class="kv"><span>ГП (yakuniy)</span><b id="k-gp">0</b></div>
+  </div>
+  <div class="sec"><div class="t">Diqqat</div>
+    <div class="kv"><span>Ombor · qabul kutmoqda</span><b class="warn" id="k-closed">0</b></div>
+    <div class="kv"><span>Qaytarilgan</span><b class="warn" id="k-ret">0</b></div>
+    <div class="kv"><span>Bekor</span><b class="bad" id="k-can">0</b></div>
+  </div>
 </div>
+
+<div id="labels"></div>
+<div class="glass" id="ticker"><div class="h">Oxirgi</div><div id="trow"></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
-const TOKEN = "__TOKEN__";
-const STATIONS = [
+const TOKEN="__TOKEN__";
+const STATIONS=[
   {key:'otk_alu',    nm:'OTK · Алюминь',       pos:[-11,-4], col:0x3B82F6, ck:'otk_alu'},
   {key:'otk_pvh',    nm:'OTK · ПВХ',           pos:[-11,4],  col:0x60A5FA, ck:'otk_pvh'},
   {key:'master_alu', nm:'Master · Алюминь',    pos:[-4,-4],  col:0x8B5CF6, ck:'master_alu'},
@@ -67,128 +98,147 @@ const STATIONS = [
   {key:'returned',   nm:'Qaytarilgan',         pos:[3,8],    col:0xF59E0B, ck:'returned'},
   {key:'cancelled',  nm:'Bekor',               pos:[10,8],   col:0xEF4444, ck:'cancelled'},
 ];
-const FLOWS = [['otk_alu','master_alu'],['otk_pvh','master_pvh'],['master_alu','gp'],['master_pvh','gp'],['gp','closed']];
-const ST_UZ = {master:'⏳ Master',gp:'⏳ ГП',closed:'✅ Yopilgan',accepted:'✅ Qabul',returned:'↩️ Qaytarilgan',cancelled:'❌ Bekor'};
-const TUR = {alyumin:'Алюминь',pvh:'ПВХ'};
+const FLOWS=[['otk_alu','master_alu'],['otk_pvh','master_pvh'],['master_alu','gp'],['master_pvh','gp'],['gp','closed']];
+const ST_UZ={master:'⏳ Master',gp:'⏳ ГП',closed:'✅ Yopilgan',accepted:'✅ Qabul',returned:'↩️ Qaytarilgan',cancelled:'❌ Bekor'};
+const TUR={alyumin:'Алюминь',pvh:'ПВХ'};
+const byKey={}; STATIONS.forEach(s=>byKey[s.key]=s);
+const hx=c=>'#'+c.toString(16).padStart(6,'0');
 
-const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0x0b1020, 40, 80);
-const renderer = new THREE.WebGLRenderer({canvas:document.getElementById('c'),antialias:true});
+const scene=new THREE.Scene();
+scene.fog=new THREE.FogExp2(0x080c18,0.021);
+const renderer=new THREE.WebGLRenderer({canvas:document.getElementById('c'),antialias:true,alpha:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.outputEncoding=THREE.sRGBEncoding;
 
 let cam;
-function setCam(){
-  const a = innerWidth/innerHeight, d = 25;
-  cam = new THREE.OrthographicCamera(-d*a,d*a,d,-d,-100,200);
-  cam.position.set(28,26,30); cam.lookAt(0,0,2);
-}
+function setCam(){const a=innerWidth/innerHeight,d=25;
+  cam=new THREE.OrthographicCamera(-d*a,d*a,d,-d,-100,200);
+  cam.position.set(28,26,30); cam.lookAt(0,0,2);}
 setCam();
-function resize(){ renderer.setSize(innerWidth,innerHeight); setCam(); }
+function resize(){renderer.setSize(innerWidth,innerHeight);setCam();}
 addEventListener('resize',resize); resize();
 
-// yorug'lik
-scene.add(new THREE.AmbientLight(0x8090c0,0.8));
-const key = new THREE.DirectionalLight(0xffffff,0.9); key.position.set(18,30,12);
-key.castShadow=true; key.shadow.mapSize.set(2048,2048);
-key.shadow.camera.left=-40;key.shadow.camera.right=40;key.shadow.camera.top=40;key.shadow.camera.bottom=-40;
+scene.add(new THREE.AmbientLight(0x8496c8,0.55));
+const key=new THREE.DirectionalLight(0xffffff,1.05); key.position.set(16,34,14);
+key.castShadow=true; key.shadow.mapSize.set(2048,2048); key.shadow.bias=-0.0004;
+key.shadow.camera.left=-42;key.shadow.camera.right=42;key.shadow.camera.top=42;key.shadow.camera.bottom=-42;
 scene.add(key);
-scene.add(new THREE.HemisphereLight(0x5570c0,0x0b1020,0.5));
+const rim=new THREE.DirectionalLight(0x5a86ff,0.6); rim.position.set(-20,12,-18); scene.add(rim);
+scene.add(new THREE.HemisphereLight(0x4a63b8,0x05070f,0.5));
 
 // pol
-const floor = new THREE.Mesh(new THREE.PlaneGeometry(60,44), new THREE.MeshStandardMaterial({color:0x141c34,roughness:1}));
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(80,60),new THREE.MeshStandardMaterial({color:0x0d1428,roughness:.95,metalness:.1}));
 floor.rotation.x=-Math.PI/2; floor.position.y=-0.02; floor.receiveShadow=true; scene.add(floor);
-const grid = new THREE.GridHelper(60,30,0x2a3a66,0x1c2848); grid.position.y=0; scene.add(grid);
+const grid=new THREE.GridHelper(80,40,0x24356a,0x141d3a); grid.material.transparent=true; grid.material.opacity=.5; scene.add(grid);
 
-const V3 = (s)=>new THREE.Vector3(s.pos[0], 0, s.pos[1]);
-const byKey = {}; STATIONS.forEach(s=>byKey[s.key]=s);
+const V3=s=>new THREE.Vector3(s.pos[0],0,s.pos[1]);
 
-// oqim chiziqlari + zarralar
-const flowParts = [];
-FLOWS.forEach(([a,b])=>{
-  const pa=V3(byKey[a]), pb=V3(byKey[b]);
-  const geo=new THREE.BufferGeometry().setFromPoints([pa.clone().setY(0.4),pb.clone().setY(0.4)]);
-  scene.add(new THREE.Line(geo,new THREE.LineBasicMaterial({color:0x3a4f8a,transparent:true,opacity:.5})));
-  for(let i=0;i<3;i++){
-    const m=new THREE.Mesh(new THREE.SphereGeometry(0.16,8,8),new THREE.MeshBasicMaterial({color:0x7cc4ff}));
-    m.userData={a:pa,b:pb,t:Math.random()}; scene.add(m); flowParts.push(m);
-  }
-});
+// glow disk teksturasi
+function glowTex(){const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');
+  const r=g.createRadialGradient(64,64,0,64,64,64); r.addColorStop(0,'rgba(255,255,255,1)');r.addColorStop(.4,'rgba(255,255,255,.5)');r.addColorStop(1,'rgba(255,255,255,0)');
+  g.fillStyle=r; g.fillRect(0,0,128,128); return new THREE.CanvasTexture(c);}
+const GT=glowTex();
 
-// stansiya stollari + накладной qutilari
+// oqim chiziqlari (nozik)
+FLOWS.forEach(([a,b])=>{const pa=V3(byKey[a]),pb=V3(byKey[b]);
+  const geo=new THREE.BufferGeometry().setFromPoints([pa.clone().setY(0.35),pb.clone().setY(0.35)]);
+  scene.add(new THREE.Line(geo,new THREE.LineBasicMaterial({color:0x2c4488,transparent:true,opacity:.4})));});
+
+// stansiyalar
 const desks={};
 STATIONS.forEach(s=>{
-  const g=new THREE.Group(); g.position.copy(V3(s));
-  const base=new THREE.Mesh(new THREE.BoxGeometry(3.4,0.5,2.6),new THREE.MeshStandardMaterial({color:0x1b2444,roughness:.8}));
-  base.position.y=0.25; base.castShadow=true; base.receiveShadow=true; g.add(base);
-  const top=new THREE.Mesh(new THREE.BoxGeometry(3.6,0.18,2.8),new THREE.MeshStandardMaterial({color:s.col,emissive:s.col,emissiveIntensity:.35,roughness:.5}));
-  top.position.y=0.55; g.add(top);
-  scene.add(g);
-  // label
+  const g=new THREE.Group(); g.position.copy(V3(s)); scene.add(g);
+  const base=new THREE.Mesh(new THREE.BoxGeometry(3.4,0.55,2.6),new THREE.MeshStandardMaterial({color:0x161f3c,roughness:.6,metalness:.35}));
+  base.position.y=0.28; base.castShadow=true; base.receiveShadow=true; g.add(base);
+  const top=new THREE.Mesh(new THREE.BoxGeometry(3.62,0.16,2.82),new THREE.MeshStandardMaterial({color:s.col,emissive:s.col,emissiveIntensity:.55,roughness:.35,metalness:.2}));
+  top.position.y=0.6; g.add(top);
+  const glow=new THREE.Mesh(new THREE.PlaneGeometry(6.5,6.5),new THREE.MeshBasicMaterial({map:GT,color:s.col,transparent:true,opacity:.32,blending:THREE.AdditiveBlending,depthWrite:false}));
+  glow.rotation.x=-Math.PI/2; glow.position.y=0.04; g.add(glow);
   const lab=document.createElement('div'); lab.className='lab';
-  lab.innerHTML=`<div class="ct" style="color:#${s.col.toString(16).padStart(6,'0')}">0</div><div class="nm">${s.nm}</div>`;
+  lab.innerHTML=`<div class="ct" style="color:${hx(s.col)}">0</div><div class="nm">${s.nm}</div>`;
   document.getElementById('labels').appendChild(lab);
-  desks[s.key]={group:g,boxes:[],count:0,lab,ctEl:lab.querySelector('.ct'),col:s.col};
+  desks[s.key]={group:g,boxes:[],count:0,lab,ctEl:lab.querySelector('.ct'),glow,top,col:s.col,pulse:0};
 });
 
-function boxMat(){ return new THREE.MeshStandardMaterial({color:0xf4f1e6,roughness:.7}); }
+const boxGeo=new THREE.BoxGeometry(0.62,0.16,0.44);
+function boxMat(tint){return new THREE.MeshStandardMaterial({color:tint||0xf2efe4,roughness:.75,metalness:.05});}
+function bpos(i){const col=i%3,row=Math.floor(i/3);return [-0.65+col*0.65, 0.7+row*0.17, -0.5+((i%2)?0.5:0)];}
 function setCount(key,n){
-  const d=desks[key]; if(!d) return;
-  const cap=Math.min(n,18);
-  if(n!==d.count){ d.ctEl.textContent=n; d.ctEl.classList.remove('bump'); void d.ctEl.offsetWidth; d.ctEl.classList.add('bump'); d.count=n; }
-  while(d.boxes.length<cap){
-    const i=d.boxes.length; const b=new THREE.Mesh(new THREE.BoxGeometry(0.62,0.16,0.44),boxMat());
-    const col=i%3, row=Math.floor(i/3);
-    b.position.set(-0.65+col*0.65, 0.72+row*0.18, -0.5+((i%2)?0.5:0));
-    b.castShadow=true; b.userData.y=b.position.y; b.position.y+=6; b.scale.set(0,0,0);
-    d.group.add(b); d.boxes.push(b);
-  }
-  while(d.boxes.length>cap){ const b=d.boxes.pop(); d.group.remove(b); }
+  const d=desks[key]; if(!d) return; const cap=Math.min(n,18);
+  if(n!==d.count){ d.ctEl.textContent=n; d.ctEl.classList.remove('bump'); void d.ctEl.offsetWidth; d.ctEl.classList.add('bump'); d.count=n; d.pulse=1; }
+  while(d.boxes.length<cap){const i=d.boxes.length;const b=new THREE.Mesh(boxGeo,boxMat());
+    const p=bpos(i); b.position.set(p[0],p[1],p[2]); b.userData.y=p[1]; b.castShadow=true;
+    b.position.y+=5; b.scale.set(0,0,0); d.group.add(b); d.boxes.push(b);}
+  while(d.boxes.length>cap){d.group.remove(d.boxes.pop());}
 }
 
-// —— header/ticker
-function fmt(x){ return (Math.round(x*100)/100).toFixed(2); }
-function paint(data){
-  document.getElementById('s-alu').innerHTML = fmt(data.today.alu_m2)+' <small>м² · '+data.today.alu_n+' та</small>';
-  document.getElementById('s-pvh').innerHTML = fmt(data.today.pvh_m2)+' <small>м² · '+data.today.pvh_n+' та</small>';
-  document.getElementById('s-tot').innerHTML = data.today.total_n+' <small>та · '+fmt(data.today.total_m2)+' м²</small>';
-  document.getElementById('cl-t').textContent = data.ts;
-  STATIONS.forEach(s=> setCount(s.key, data.stages[s.ck]||0));
+// haqiqiy harakat — travellar
+const travelers=[];
+function spawnTraveler(aKey,bKey,tint){
+  const a=V3(byKey[aKey]).setY(1.0), b=V3(byKey[bKey]).setY(1.0);
+  const m=new THREE.Mesh(boxGeo,boxMat(tint)); m.scale.set(1.3,1.3,1.3); m.castShadow=true;
+  m.userData={a,b,t:0}; scene.add(m); travelers.push(m);
+}
+
+function fmt(x){return (Math.round(x*100)/100).toFixed(2);}
+let prev=null;
+function paint(d){
+  // header
+  document.getElementById('s-alu').innerHTML=fmt(d.today.alu_m2)+' <small>м² · '+d.today.alu_n+' та</small>';
+  document.getElementById('s-pvh').innerHTML=fmt(d.today.pvh_m2)+' <small>м² · '+d.today.pvh_n+' та</small>';
+  document.getElementById('s-tot').innerHTML=d.today.total_n+' <small>та · '+fmt(d.today.total_m2)+' м²</small>';
+  document.getElementById('cl-t').textContent=d.ts;
+  // side stats
+  const mx=Math.max(d.today.alu_m2,d.today.pvh_m2,1);
+  document.getElementById('bar-alu').style.width=(d.today.alu_m2/mx*100)+'%';
+  document.getElementById('bar-pvh').style.width=(d.today.pvh_m2/mx*100)+'%';
+  document.getElementById('bv-alu').textContent=fmt(d.today.alu_m2);
+  document.getElementById('bv-pvh').textContent=fmt(d.today.pvh_m2);
+  document.getElementById('k-master').textContent=(d.stages.master_alu||0)+(d.stages.master_pvh||0);
+  document.getElementById('k-gp').textContent=d.stages.gp||0;
+  document.getElementById('k-closed').textContent=d.stages.closed||0;
+  document.getElementById('k-ret').textContent=d.stages.returned||0;
+  document.getElementById('k-can').textContent=d.stages.cancelled||0;
+  // haqiqiy harakat: b oshsa a->b traveler
+  if(prev){ FLOWS.forEach(([a,b])=>{ const inc=(d.stages[byKey[b].ck]||0)-(prev[byKey[b].ck]||0);
+    for(let i=0;i<Math.min(inc,3);i++) spawnTraveler(a,b, byKey[b].key.includes('pvh')?0xd8c6ff:null); }); }
+  prev={...d.stages};
+  STATIONS.forEach(s=>setCount(s.key,d.stages[s.ck]||0));
+  // ticker
   const tr=document.getElementById('trow'); tr.innerHTML='';
-  (data.recent||[]).forEach(n=>{
-    const c=document.createElement('div'); c.className='chip';
-    c.innerHTML=`<b>Счёт ${n.schet||'—'}</b> <span class="s">· ${TUR[n.tur]||n.tur} · ${n.mtur||''} · ${ST_UZ[n.status]||n.status}</span>`;
-    tr.appendChild(c);
-  });
+  (d.recent||[]).forEach(n=>{const c=document.createElement('div');c.className='chip';
+    c.innerHTML=`<b>Счёт ${n.schet||'—'}</b> <span class="s">· ${TUR[n.tur]||n.tur} · ${n.mtur||''} · ${ST_UZ[n.status]||n.status}</span>`; tr.appendChild(c);});
 }
 
-let lastOk=0;
 async function poll(){
-  try{
-    const r=await fetch('/api/flow?token='+encodeURIComponent(TOKEN),{cache:'no-store'});
-    if(!r.ok) throw new Error(r.status);
-    paint(await r.json()); lastOk=Date.now();
+  try{const r=await fetch('/api/flow?token='+encodeURIComponent(TOKEN),{cache:'no-store'});
+    if(!r.ok)throw 0; paint(await r.json());
     document.getElementById('dot').classList.remove('off'); document.getElementById('cl-s').textContent='jonli';
-  }catch(e){
-    document.getElementById('dot').classList.add('off'); document.getElementById('cl-s').textContent='ulanmadi';
-  }
+  }catch(e){document.getElementById('dot').classList.add('off'); document.getElementById('cl-s').textContent='ulanmadi';}
 }
 poll(); setInterval(poll,4000);
 
-// label projeksiya + animatsiya
 const tmp=new THREE.Vector3();
-function project(v){ tmp.copy(v); tmp.project(cam); return {x:(tmp.x*.5+.5)*innerWidth, y:(-tmp.y*.5+.5)*innerHeight}; }
+function project(v){tmp.copy(v);tmp.project(cam);return{x:(tmp.x*.5+.5)*innerWidth,y:(-tmp.y*.5+.5)*innerHeight};}
 const clock=new THREE.Clock();
 function loop(){
-  const dt=clock.getDelta();
-  flowParts.forEach(p=>{ p.userData.t+=dt*0.28; if(p.userData.t>1)p.userData.t-=1;
-    p.position.lerpVectors(p.userData.a,p.userData.b,p.userData.t); p.position.y=0.4+Math.sin(p.userData.t*Math.PI)*0.3; });
-  Object.values(desks).forEach(d=> d.boxes.forEach(b=>{
-    b.position.y += (b.userData.y - b.position.y)*Math.min(1,dt*8);
-    const sc=b.scale.x + (1-b.scale.x)*Math.min(1,dt*8); b.scale.set(sc,sc,sc);
-  }));
-  STATIONS.forEach(s=>{ const d=desks[s.key]; const p=project(V3(s).setY(1.6));
-    d.lab.style.left=p.x+'px'; d.lab.style.top=p.y+'px'; d.lab.style.opacity=(tmp.z<1?1:0); });
+  const dt=Math.min(clock.getDelta(),0.05);
+  // travellar
+  for(let i=travelers.length-1;i>=0;i--){const m=travelers[i]; m.userData.t+=dt*0.7;
+    const t=m.userData.t; m.position.lerpVectors(m.userData.a,m.userData.b,t); m.position.y=1.0+Math.sin(t*Math.PI)*1.6;
+    m.rotation.y+=dt*3;
+    if(t>=1){scene.remove(m); travelers.splice(i,1);}}
+  // qutilar drop-in + stansiya pulse
+  Object.values(desks).forEach(d=>{
+    d.boxes.forEach(b=>{b.position.y+=(b.userData.y-b.position.y)*Math.min(1,dt*9);
+      const sc=b.scale.x+(1-b.scale.x)*Math.min(1,dt*9); b.scale.set(sc,sc,sc);});
+    if(d.pulse>0){d.pulse=Math.max(0,d.pulse-dt*1.6);
+      d.glow.material.opacity=0.32+d.pulse*0.5; d.top.material.emissiveIntensity=0.55+d.pulse*0.9;}
+  });
+  // yorliqlar
+  STATIONS.forEach(s=>{const d=desks[s.key];const p=project(V3(s).setY(1.7));
+    d.lab.style.left=p.x+'px'; d.lab.style.top=p.y+'px'; d.lab.style.opacity=(tmp.z<1?1:0);});
   renderer.render(scene,cam);
   requestAnimationFrame(loop);
 }
