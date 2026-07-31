@@ -47,12 +47,19 @@
   .lab .ct{font-size:24px;font-weight:800;line-height:1;text-shadow:0 2px 8px rgba(0,0,0,.7);}
   .lab .ct.bump{animation:bump .55s cubic-bezier(.3,1.6,.5,1);}
   @keyframes bump{0%{transform:scale(1)}40%{transform:scale(1.55)}100%{transform:scale(1)}}
-  #ticker{position:fixed;bottom:14px;left:14px;right:254px;z-index:10;padding:10px 14px;display:flex;gap:10px;align-items:center;overflow:hidden;}
-  #ticker .h{font-size:11px;color:#8ea3c9;text-transform:uppercase;letter-spacing:.6px;flex-shrink:0;}
-  #trow{display:flex;gap:8px;overflow:hidden;flex:1;-webkit-mask:linear-gradient(90deg,#000 85%,transparent);}
-  .chip{font-size:12px;padding:6px 11px;border-radius:9px;background:rgba(130,160,230,.1);white-space:nowrap;flex-shrink:0;border:1px solid rgba(130,160,230,.08);}
-  .chip b{color:#e8ecf5;} .chip .s{opacity:.65;font-size:11px;}
-  @media(max-width:820px){#side{display:none;}#ticker{right:14px;}}
+  #feed{position:fixed;left:14px;top:88px;width:256px;max-height:calc(100vh - 108px);z-index:10;padding:12px 14px;display:flex;flex-direction:column;}
+  #feed .fh{font-size:12px;font-weight:700;color:#cdd8f0;margin-bottom:11px;display:flex;align-items:center;gap:7px;letter-spacing:.3px;}
+  .rdot{width:8px;height:8px;border-radius:50%;background:#ff5a5a;box-shadow:0 0 9px #ff5a5a;animation:pulse 1.6s infinite;}
+  #frow{overflow:hidden;flex:1;display:flex;flex-direction:column;gap:7px;-webkit-mask:linear-gradient(#000 88%,transparent);}
+  .ev{display:flex;gap:9px;align-items:flex-start;padding:7px 10px;border-radius:10px;background:rgba(130,160,230,.08);border-left:2px solid #59a9ff;}
+  .ev.in{animation:slidein .5s cubic-bezier(.2,.9,.3,1);}
+  @keyframes slidein{from{opacity:0;transform:translateX(-16px)}to{opacity:1;transform:none}}
+  .ev .ed{width:9px;height:9px;border-radius:50%;margin-top:3px;flex-shrink:0;box-shadow:0 0 8px currentColor;}
+  .ev .ei{flex:1;min-width:0;}
+  .ev .et{font-size:12px;color:#e8ecf5;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .ev .es{font-size:11px;color:#9fb0d0;display:flex;justify-content:space-between;gap:6px;margin-top:1px;}
+  .ev .es .tm{color:#7f93b8;flex-shrink:0;}
+  @media(max-width:900px){#side,#feed{display:none;}}
 </style>
 </head>
 <body>
@@ -85,7 +92,7 @@
 </div>
 
 <div id="labels"></div>
-<div class="glass" id="ticker"><div class="h">Oxirgi</div><div id="trow"></div></div>
+<div class="glass" id="feed"><div class="fh"><span class="rdot"></span> Jonli hodisalar</div><div id="frow"></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
@@ -105,6 +112,26 @@ const ST_UZ={master:'⏳ Master',gp:'⏳ ГП',closed:'✅ Yopilgan',accepted:'�
 const TUR={alyumin:'Алюминь',pvh:'ПВХ'};
 const byKey={}; STATIONS.forEach(s=>byKey[s.key]=s);
 const hx=c=>'#'+c.toString(16).padStart(6,'0');
+const EV={
+  master:{c:0x3B82F6,l:'🆕 OTK yaratdi'},
+  gp:{c:0x8B5CF6,l:'✍️ Master imzoladi'},
+  closed:{c:0x22C55E,l:'✅ ГП yopdi'},
+  accepted:{c:0x14B8A6,l:'📦 Operator qabul qildi'},
+  returned:{c:0xF59E0B,l:'↩️ Qaytarildi'},
+  cancelled:{c:0xEF4444,l:'❌ Bekor qilindi'},
+};
+let prevEv=new Set();
+function renderFeed(events){
+  const f=document.getElementById('frow'); f.innerHTML=''; const now=new Set();
+  (events||[]).forEach(e=>{
+    const k=(e.schet||'')+'|'+e.status+'|'+(e.ago||''); now.add(k);
+    const m=EV[e.status]||{c:0x8ea3c9,l:e.status}; const col=hx(m.c);
+    const el=document.createElement('div'); el.className='ev'+(prevEv.has(k)?'':' in'); el.style.borderLeftColor=col;
+    el.innerHTML=`<div class="ed" style="color:${col}"></div><div class="ei"><div class="et">Счёт ${e.schet||'—'} · ${e.mtur||''}</div><div class="es"><span>${m.l}</span><span class="tm">${e.ago||''}</span></div></div>`;
+    f.appendChild(el);
+  });
+  prevEv=now;
+}
 
 const scene=new THREE.Scene();
 scene.fog=new THREE.FogExp2(0x080c18,0.021);
@@ -208,10 +235,7 @@ function paint(d){
     for(let i=0;i<Math.min(inc,3);i++) spawnTraveler(a,b, byKey[b].key.includes('pvh')?0xd8c6ff:null); }); }
   prev={...d.stages};
   STATIONS.forEach(s=>setCount(s.key,d.stages[s.ck]||0));
-  // ticker
-  const tr=document.getElementById('trow'); tr.innerHTML='';
-  (d.recent||[]).forEach(n=>{const c=document.createElement('div');c.className='chip';
-    c.innerHTML=`<b>Счёт ${n.schet||'—'}</b> <span class="s">· ${TUR[n.tur]||n.tur} · ${n.mtur||''} · ${ST_UZ[n.status]||n.status}</span>`; tr.appendChild(c);});
+  renderFeed(d.recent);
 }
 
 async function poll(){

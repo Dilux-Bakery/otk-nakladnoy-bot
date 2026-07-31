@@ -227,6 +227,17 @@ def list_by_user(role: str, uid: int, limit: int = 15):
     return [_row(r) for r in rows]
 
 
+def recent_events(limit: int = 12):
+    """Oxirgi faoliyat bo'yicha (create/master/gp vaqtining eng kattasi) tartiblangan."""
+    with _conn() as c:
+        rows = c.execute(
+            "SELECT * FROM nakladnoy ORDER BY "
+            "max(created_at, COALESCE(master_at,''), COALESCE(gp_at,'')) DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+    return [_row(r) for r in rows]
+
+
 def returned_for_otk(uid: int, limit: int = 20):
     """Shu OTK ning qaytarilgan (tuzatilishi kerak) накладнойlari."""
     with _conn() as c:

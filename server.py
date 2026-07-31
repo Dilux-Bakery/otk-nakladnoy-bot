@@ -823,6 +823,22 @@ app.mount("/webapp", StaticFiles(directory=os.path.join(_HERE, "webapp"), html=T
 
 
 # ════════════════ Jonli 3D panel ════════════════
+def _ago(at):
+    """Nisbiy vaqt: 'hozir' / '5 daq oldin' / '2 soat oldin' / '3 kun oldin'."""
+    try:
+        dt = datetime.strptime(at[:16], "%Y-%m-%d %H:%M")
+        s = (_now_local() - dt).total_seconds()
+        if s < 60:
+            return "hozir"
+        if s < 3600:
+            return f"{int(s//60)} daq oldin"
+        if s < 86400:
+            return f"{int(s//3600)} soat oldin"
+        return f"{int(s//86400)} kun oldin"
+    except Exception:
+        return ""
+
+
 def build_flow_data():
     today = _now_local().strftime("%Y-%m-%d")
     stages = db.panel_snapshot(today)
@@ -837,8 +853,11 @@ def build_flow_data():
         agg[t][0] += 1
         agg[t][1] += db.total_area(n["items"])
     a, p = agg["alyumin"], agg["pvh"]
-    recent = [{"schet": n.get("schet", ""), "tur": n["tur"],
-               "mtur": n.get("mtur", ""), "status": n["status"]} for n in db.recent(8)]
+    recent = []
+    for n in db.recent_events(12):
+        at = max(n.get("created_at") or "", n.get("master_at") or "", n.get("gp_at") or "")
+        recent.append({"schet": n.get("schet", ""), "tur": n["tur"], "mtur": n.get("mtur", ""),
+                       "status": n["status"], "ago": _ago(at)})
     return {
         "ts": _now_local().strftime("%H:%M:%S"),
         "stages": stages,
