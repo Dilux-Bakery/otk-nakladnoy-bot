@@ -260,15 +260,20 @@ def panel_snapshot(today: str):
     with _conn() as c:
         def cnt(where, args=()):
             return c.execute("SELECT COUNT(*) FROM nakladnoy WHERE " + where, args).fetchone()[0]
+        closed = cnt("status='closed'")
+        accepted = cnt("status='accepted'")
         return {
             "otk_alu":     cnt("substr(created_at,1,10)=? AND tur='alyumin'", (today,)),
             "otk_pvh":     cnt("substr(created_at,1,10)=? AND tur='pvh'", (today,)),
             "master_alu":  cnt("status='master' AND tur='alyumin'"),
             "master_pvh":  cnt("status='master' AND tur='pvh'"),
             "gp":          cnt("status='gp'"),
-            "closed":      cnt("status='closed'"),
+            "closed":      closed,                 # qabul kutmoqda
+            "accepted":    accepted,               # operator qabul qilgan
+            "ombor":       closed + accepted,      # Ombor'да jami (kutmoqda + qabul)
             "returned":    cnt("status='returned'"),
             "cancelled":   cnt("status='cancelled'"),
+            "total":       cnt("1=1"),             # barcha (jami)
         }
 
 

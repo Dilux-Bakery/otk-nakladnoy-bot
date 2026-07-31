@@ -40,7 +40,8 @@
   .bar i.alu{background:linear-gradient(90deg,#3B82F6,#7cc4ff);} .bar i.pvh{background:linear-gradient(90deg,#8B5CF6,#c4a5ff);}
   .bv{font-size:12px;font-weight:700;width:56px;text-align:right;font-variant-numeric:tabular-nums;color:#cdd8f0;}
   .kv{display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:4px 0;color:#b7c4de;}
-  .kv b{font-size:14px;font-variant-numeric:tabular-nums;color:#e8ecf5;} .kv b.warn{color:#ffcf6b;} .kv b.bad{color:#ff8a8a;}
+  .kv b{font-size:14px;font-variant-numeric:tabular-nums;color:#e8ecf5;} .kv b.warn{color:#ffcf6b;} .kv b.bad{color:#ff8a8a;} .kv b.good{color:#7CFFB0;}
+  #tot-row{border-top:1px solid rgba(130,160,230,.16);margin-top:5px;padding-top:8px;} #tot-row b{font-size:16px;}
   .lab{position:fixed;transform:translate(-50%,-100%);pointer-events:none;z-index:5;text-align:center;white-space:nowrap;transition:opacity .3s;}
   .lab .nm{font-size:11px;color:#cdd8f0;text-shadow:0 1px 4px #000;letter-spacing:.2px;}
   .lab .ct{font-size:24px;font-weight:800;line-height:1;text-shadow:0 2px 8px rgba(0,0,0,.7);}
@@ -71,14 +72,15 @@
     <div class="brow"><span class="bl alu">Алюминь</span><div class="bar"><i class="alu" id="bar-alu"></i></div><span class="bv" id="bv-alu">0</span></div>
     <div class="brow"><span class="bl pvh">ПВХ</span><div class="bar"><i class="pvh" id="bar-pvh"></i></div><span class="bv" id="bv-pvh">0</span></div>
   </div>
-  <div class="sec"><div class="t">Jarayonда</div>
-    <div class="kv"><span>Master (imzo kutmoqda)</span><b id="k-master">0</b></div>
-    <div class="kv"><span>ГП (yakuniy)</span><b id="k-gp">0</b></div>
+  <div class="sec"><div class="t">Operatorlar</div>
+    <div class="kv"><span>✅ Qabul qilingan</span><b class="good" id="k-acc">0</b></div>
+    <div class="kv"><span>⏳ Qabul kutmoqda</span><b class="warn" id="k-closed">0</b></div>
   </div>
-  <div class="sec"><div class="t">Diqqat</div>
-    <div class="kv"><span>Ombor · qabul kutmoqda</span><b class="warn" id="k-closed">0</b></div>
-    <div class="kv"><span>Qaytarilgan</span><b class="warn" id="k-ret">0</b></div>
-    <div class="kv"><span>Bekor</span><b class="bad" id="k-can">0</b></div>
+  <div class="sec"><div class="t">Holat</div>
+    <div class="kv"><span>Jarayonда (Master+ГП)</span><b id="k-proc">0</b></div>
+    <div class="kv"><span>↩️ Qaytarilgan</span><b class="warn" id="k-ret">0</b></div>
+    <div class="kv"><span>❌ Bekor</span><b class="bad" id="k-can">0</b></div>
+    <div class="kv" id="tot-row"><span>Σ Jami (barcha)</span><b id="k-tot">0</b></div>
   </div>
 </div>
 
@@ -94,7 +96,7 @@ const STATIONS=[
   {key:'master_alu', nm:'Master · Алюминь',    pos:[-4,-4],  col:0x8B5CF6, ck:'master_alu'},
   {key:'master_pvh', nm:'Master · ПВХ',        pos:[-4,4],   col:0xA855F7, ck:'master_pvh'},
   {key:'gp',         nm:'ГП',                  pos:[3,0],    col:0x14B8A6, ck:'gp'},
-  {key:'closed',     nm:'Ombor / Operatorlar', pos:[10,0],   col:0x22C55E, ck:'closed'},
+  {key:'closed',     nm:'Ombor / Operatorlar', pos:[10,0],   col:0x22C55E, ck:'ombor'},
   {key:'returned',   nm:'Qaytarilgan',         pos:[3,8],    col:0xF59E0B, ck:'returned'},
   {key:'cancelled',  nm:'Bekor',               pos:[10,8],   col:0xEF4444, ck:'cancelled'},
 ];
@@ -195,11 +197,12 @@ function paint(d){
   document.getElementById('bar-pvh').style.width=(d.today.pvh_m2/mx*100)+'%';
   document.getElementById('bv-alu').textContent=fmt(d.today.alu_m2);
   document.getElementById('bv-pvh').textContent=fmt(d.today.pvh_m2);
-  document.getElementById('k-master').textContent=(d.stages.master_alu||0)+(d.stages.master_pvh||0);
-  document.getElementById('k-gp').textContent=d.stages.gp||0;
+  document.getElementById('k-acc').textContent=d.stages.accepted||0;
   document.getElementById('k-closed').textContent=d.stages.closed||0;
+  document.getElementById('k-proc').textContent=(d.stages.master_alu||0)+(d.stages.master_pvh||0)+(d.stages.gp||0);
   document.getElementById('k-ret').textContent=d.stages.returned||0;
   document.getElementById('k-can').textContent=d.stages.cancelled||0;
+  document.getElementById('k-tot').textContent=d.stages.total||0;
   // haqiqiy harakat: b oshsa a->b traveler
   if(prev){ FLOWS.forEach(([a,b])=>{ const inc=(d.stages[byKey[b].ck]||0)-(prev[byKey[b].ck]||0);
     for(let i=0;i<Math.min(inc,3);i++) spawnTraveler(a,b, byKey[b].key.includes('pvh')?0xd8c6ff:null); }); }
