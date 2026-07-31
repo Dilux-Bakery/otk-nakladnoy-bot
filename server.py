@@ -536,6 +536,34 @@ async def on_callback(cb):
                        f"<b>{_ref(n)}</b> · {pdf.TUR_LABEL.get(n['tur'])} · {n.get('mtur','')} — {ST_UZ.get(n['status'], n['status'])}")
         return
 
+    # 🗑 OTK — qaytarilgan накладнойни o'chirish (yumshoq: bekor holatiga; bazada saqlanadi)
+    if action in ("del", "delok", "delno"):
+        if role["role"] != "otk" or n.get("otk_id") != uid:
+            return await tg("answerCallbackQuery", callback_query_id=cid, text="Ruxsat yo‘q")
+        if action == "del":
+            if n["status"] != "returned":
+                return await tg("answerCallbackQuery", callback_query_id=cid, text="Bo‘lmaydi: " + ST_UZ.get(n["status"], n["status"]))
+            await tg("answerCallbackQuery", callback_query_id=cid)
+            return await tg("editMessageText", chat_id=chat_id, message_id=mid,
+                            text=f"🗑 <b>{_ref(n)}</b> ni o‘chirasizmi?\n(bekor holatiga o‘tadi)", parse_mode="HTML",
+                            reply_markup={"inline_keyboard": [[
+                                {"text": "✅ Ha, o‘chirish", "callback_data": f"delok:{nid}"},
+                                {"text": "↩️ Yo‘q", "callback_data": f"delno:{nid}"}]]})
+        if action == "delok":
+            if n["status"] != "returned":
+                return await tg("answerCallbackQuery", callback_query_id=cid, text="Allaqachon: " + ST_UZ.get(n["status"], n["status"]))
+            db.set_status(nid, "cancelled")
+            await tg("answerCallbackQuery", callback_query_id=cid, text="🗑 O‘chirildi")
+            return await tg("editMessageText", chat_id=chat_id, message_id=mid,
+                            text=f"🗑 <b>{_ref(n)}</b> — o‘chirildi.", parse_mode="HTML",
+                            reply_markup={"inline_keyboard": []})
+        await tg("answerCallbackQuery", callback_query_id=cid, text="Bekor")   # delno
+        edit_url = f"{config.BASE_URL}/webapp/?v={WEBAPP_VER}&mode=edit&id={nid}"
+        return await tg("editMessageText", chat_id=chat_id, message_id=mid, text=_nak_line(n), parse_mode="HTML",
+                        reply_markup={"inline_keyboard": [[
+                            {"text": "✏️ Tahrirlash", "web_app": {"url": edit_url}},
+                            {"text": "🗑 O‘chirish", "callback_data": f"del:{nid}"}]]})
+
     if role["role"] not in ("operator", "rahbar"):
         return await tg("answerCallbackQuery", callback_query_id=cid, text="Ruxsat yo‘q")
     who = cb["from"].get("first_name", "") or "xodim"
@@ -618,9 +646,13 @@ async def send_toedit_list(chat_id, uid):
     rows = db.returned_for_otk(uid)
     if not rows:
         return await send_message(chat_id, "↩️ <b>Tahrirlanishi kerak</b>\n\nHozircha yo‘q — hammasi joyida ✅")
-    await send_message(chat_id, f"↩️ <b>Tahrirlanishi kerak</b> ({len(rows)} ta) — tuzatib yuboring 👇")
+    await send_message(chat_id, f"↩️ <b>Tahrirlanishi kerak</b> ({len(rows)} ta) — tuzating yoki o‘chiring 👇")
     for n in rows:
-        await send_message(chat_id, _nak_line(n), webapp_btn("✏️ Tahrirlash", "edit", n["id"]))
+        edit_url = f"{config.BASE_URL}/webapp/?v={WEBAPP_VER}&mode=edit&id={n['id']}"
+        await send_message(chat_id, _nak_line(n), {"inline_keyboard": [[
+            {"text": "✏️ Tahrirlash", "web_app": {"url": edit_url}},
+            {"text": "🗑 O‘chirish", "callback_data": f"del:{n['id']}"},
+        ]]})
 
 
 async def send_recent_all(chat_id):
