@@ -86,14 +86,30 @@ def _client_ip(request: Request) -> str:
     return (request.client.host if request.client else "") or ""
 
 
+def _norm_txt(v):
+    """Matnni solishtirish uchun tekislaydi: ortiqcha probel, katta/kichik harf farqi yo'qoladi.
+    ('6000 трио' va '6000  трио' — bir xil deb qaraladi)."""
+    return re.sub(r"\s+", " ", str(v or "")).strip().lower()
+
+
+def _norm_num(v):
+    """Raqamni bir ko'rinishga keltiradi: 748, '748', '748.0', ' 748 ' — hammasi '748'."""
+    try:
+        return ("%.4f" % float(str(v).replace(",", ".").strip())).rstrip("0").rstrip(".")
+    except Exception:
+        return _norm_txt(v)
+
+
 def _sig(tur, schet, mtur, rang, profil, items):
-    """накладной mazmuni imzosi — takror aniqlash uchun (izoh/kamchilik hisobga olinmaydi)."""
+    """накладной mazmuni imzosi — takror aniqlash uchun (izoh/kamchilik hisobga olinmaydi).
+    Probel/registr farqi takrorni o'tkazib yubormasligi uchun hamma qiymat tekislanadi."""
     norm = sorted(
-        f"{it.get('kvo','')}/{it.get('shr','')}/{it.get('dln','')}/{it.get('kv2','')}"
+        "%s/%s/%s/%s" % (_norm_num(it.get("kvo")), _norm_num(it.get("shr")),
+                         _norm_num(it.get("dln")), _norm_num(it.get("kv2")))
         for it in (items or [])
     )
-    raw = "|".join([str(tur or ""), str(schet or ""), str(mtur or ""),
-                    str(rang or ""), str(profil or ""), "#".join(norm)])
+    raw = "|".join([_norm_txt(tur), _norm_txt(schet), _norm_txt(mtur),
+                    _norm_txt(rang), _norm_txt(profil), "#".join(norm)])
     return hashlib.md5(raw.encode("utf-8")).hexdigest()
 
 

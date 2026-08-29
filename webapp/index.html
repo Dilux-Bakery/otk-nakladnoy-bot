@@ -139,7 +139,7 @@
         <div class="f"><label>Длина mm</label><input type="number" id="dln" placeholder="2350" oninput="calc()"></div>
       </div>
       <div class="kv2" id="kv2"></div>
-      <div class="f" id="fKv2man" style="display:none"><label>Кв² (кв.м) — qo'lda yoziladi</label><input type="text" id="kv2man" inputmode="decimal" placeholder="Masalan: 0.42 yoki 0,42"></div>
+      <div class="f" id="fKv2man" style="display:none"><label>Кв² (кв.м) — <b>ЖАМИ</b> (барча доналар учун)</label><input type="text" id="kv2man" inputmode="decimal" placeholder="Masalan: 0.42 yoki 0,42"></div>
       <div class="f"><label>Примечание</label><input id="izoh" placeholder="—"></div>
       <button class="addbtn" onclick="addItem()">➕ Qo'shish</button>
       <div class="f"><label>⚠️ Камчиликлар (bo'lsa)</label><textarea id="kamchilik" rows="2" placeholder="Aniqlangan kamchiliklar… (ixtiyoriy)"></textarea></div>
@@ -288,7 +288,12 @@ function setupDims(){
 }
 function calc(){
   const k=+val('kvo')||0, s=+val('shr')||0, d=+val('dln')||0, b=document.getElementById('kv2');
-  if(isNonStd()){ b.style.display='none'; return; }   // Нестандарт — Кв² qo'lда yoziladi, avtomat yo'q
+  // Нестандарт — Кв² qo'lда yoziladi. Bir nechta dona bo'lsa JAMI yozilishini eslatamiz.
+  if(isNonStd()){
+    if(k>1){ b.textContent='⚠️ '+k+' дона — ЖАМИ Кв² ёзинг (битта дона учун эмас)'; b.style.display='block'; }
+    else b.style.display='none';
+    return;
+  }
   if(isProf()){ if(d){ b.textContent='Длина: '+d+' mm'+(k>1?' × '+k:''); b.style.display='block'; } else b.style.display='none'; return; }
   if(k&&s&&d){ b.textContent='Кв²: '+(s*d/1e6*k).toFixed(2)+' м²'; b.style.display='block'; } else b.style.display='none';
 }
