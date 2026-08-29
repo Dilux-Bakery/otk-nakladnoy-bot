@@ -215,6 +215,17 @@ def uid_from(body: dict) -> int:
     raise PermissionError("no-auth")
 
 
+# holat -> odam o'qiydigan nom (takror ogohlantirishida ko'rsatiladi)
+HOLAT_NOMI = {
+    "master": "мастер имзоси кутилмоқда",
+    "gp": "ГП имзоси кутилмоқда",
+    "closed": "ёпилган",
+    "accepted": "омборга қабул қилинган",
+    "returned": "тузатишга қайтарилган",
+    "cancelled": "бекор қилинган",
+}
+
+
 def err(msg, code=400):
     return JSONResponse(status_code=code, content={"error": msg})
 
@@ -256,14 +267,29 @@ async def api_create(request: Request):
     items = n.get("items") or []
     if not items:
         return err("Kamida bitta o‘lcham kiriting")
-    # Takror tekshiruvi — aynan bir xil ma'lumotli накладной bo'lsa yaratmaymiz
+    # Takror tekshiruvi — aynan bir xil ma'lumotli накладной bo'lsa TO'XTATAMIZ va
+    # qaysi hujjat bilan urishganini ko'rsatamiz. Agar OTK "bu haqiqatan yangi
+    # yetkazib berish" deb ongli tasdiqlasa — o'tkazamiz, lekin bazada belgilab qo'yamiz.
     new_sig = _sig(tur, schet, n.get("mtur", ""), n.get("rang", ""), n.get("profil", ""), items)
+    urishgan = None
     for ex in db.by_schet_exact(schet_w, schet_k):
         if ex.get("status") == "cancelled":
             continue
         if _sig(ex.get("tur"), ex.get("schet"), ex.get("mtur"),
                 ex.get("rang"), ex.get("profil"), ex.get("items")) == new_sig:
-            return err(f"⚠️ Bu ma'lumotli накладной allaqachon bor (Счёт {ex.get('schet')}). Takror yaratilmadi.", 409)
+            urishgan = ex
+            break
+    if urishgan and not body.get("takror_ok"):
+        return JSONResponse(status_code=409, content={
+            "error": "Бундай накладной аллақачон бор",
+            "dup": {
+                "nomer": urishgan.get("nomer", ""),
+                "schet": urishgan.get("schet", ""),
+                "sana": (urishgan.get("created_at") or "")[:16],
+                "kim": urishgan.get("otk_name", ""),
+                "holat": HOLAT_NOMI.get(urishgan.get("status", ""), urishgan.get("status", "")),
+            },
+        })
     nid = db.create({
         "nomer": n.get("nomer", ""), "tur": tur, "schet": schet,
         "schet_w": schet_w, "schet_k": schet_k,
@@ -273,6 +299,11 @@ async def api_create(request: Request):
         "otk_id": uid, "otk_name": role["name"], "otk_imzo": body.get("imzo", ""),
         "otk_ip": _client_ip(request),
     })
+    if urishgan:
+        # ongli tasdiqlangan takror — auditda ajratib olish uchun iz
+        db.set_takror(nid, "№%s (id=%s) ga nisbatan tasdiqlangan · %s · %s"
+                      % (urishgan.get("nomer", ""), urishgan.get("id"),
+                         role["name"], _now_local().strftime("%Y-%m-%d %H:%M")))
     # Tanlangan TURга mos Master'ga xabar
     master = config.MASTER.get(tur)
     if master and master.get("id"):

@@ -57,7 +57,8 @@ def init():
         c.execute("CREATE INDEX IF NOT EXISTS idx_status ON nakladnoy(status)")
         # migratsiya: eski bazaga yangi ustunlar (bo'lmasa)
         for _col in ("sistema", "schet_w", "schet_k", "kamchilik",
-                     "otk_ip", "master_ip", "gp_ip", "edit_msg", "sign_msg"):
+                     "otk_ip", "master_ip", "gp_ip", "edit_msg", "sign_msg",
+                     "takror_ok"):
             try:
                 c.execute(f"ALTER TABLE nakladnoy ADD COLUMN {_col} TEXT")
             except Exception:
@@ -152,6 +153,23 @@ def set_sign_msg(nid: int, mid):
     """Master/ГП ga yuborilган 'Ko'rib imzolash' xabari id'si (imzodan keyin o'chirish uchun)."""
     with _conn() as c:
         c.execute("UPDATE nakladnoy SET sign_msg=? WHERE id=?", (str(mid) if mid else "", nid))
+
+
+def set_takror(nid: int, izoh: str):
+    """OTK 'bu haqiqatan yangi yetkazib berish' deb ONGLI tasdiqlagan takror.
+    Auditda tasodifiy dublikatdan ajratib olish uchun iz qoldiradi."""
+    with _conn() as c:
+        c.execute("UPDATE nakladnoy SET takror_ok=? WHERE id=?", (izoh, nid))
+
+
+def takror_tasdiqlanganlar(limit: int = 200):
+    """Ongli tasdiqlangan takrorlar ro'yxati (audit uchun)."""
+    with _conn() as c:
+        rows = c.execute(
+            "SELECT * FROM nakladnoy WHERE takror_ok IS NOT NULL AND takror_ok!='' "
+            "ORDER BY id DESC LIMIT ?", (limit,)
+        ).fetchall()
+    return [_row(r) for r in rows]
 
 
 def update_for_edit(nid: int, d: dict):

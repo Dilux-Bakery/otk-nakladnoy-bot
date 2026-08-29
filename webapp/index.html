@@ -203,7 +203,7 @@ async function api(path, body){
     body: JSON.stringify(Object.assign({ initData: (TG&&TG.initData)||'', dev: DEV }, body||{})) });
   const txt = await r.text();
   let data; try { data = JSON.parse(txt); } catch(e){ data = {error: txt}; }
-  if (!r.ok || data.error) throw new Error(data.error || ('HTTP '+r.status));
+  if (!r.ok || data.error) { const e = new Error(data.error || ('HTTP '+r.status)); e.data = data; throw e; }
   return data;
 }
 
@@ -338,7 +338,23 @@ async function submitCreate(){
   try{
     const nk = { tur:S.tur, nomer:S.nomer, schet_w:S.schet_w, schet_k:S.schet_k, mtur:S.mtur, mahsulot:S.mahsulot, rang:S.rang, profil:S.profil, kamchilik:val('kamchilik'), items:S.items };
     if (EDIT_ID) await api('/api/update', { id:EDIT_ID, nakladnoy:nk, imzo:sigCreate });
-    else await api('/api/create', { nakladnoy:nk, imzo:sigCreate });
+    else {
+      try {
+        await api('/api/create', { nakladnoy:nk, imzo:sigCreate });
+      } catch(e) {
+        const d = e.data && e.data.dup;
+        if(!d) throw e;
+        // Takror topildi — қайси ҳужжат билан уришганини кўрсатиб, онгли тасдиқ сўраймиз
+        const savol = '⚠️ БУНДАЙ НАКЛАДНОЙ АЛЛАҚАЧОН БОР\n\n'
+          + '№' + d.nomer + '  ·  Счёт ' + d.schet + '\n'
+          + d.sana + '  ·  ' + d.kim + '\n'
+          + 'Ҳолати: ' + d.holat + '\n\n'
+          + 'Бу ҲАҚИҚАТАН янги етказиб бериш бўлса — OK босинг.\n'
+          + 'Адашиб иккинчи марта киритаётган бўлсангиз — Бекор қилинг.';
+        if(!confirm(savol)) { btn.disabled=false; btn.textContent='✓ Yuborish'; return; }
+        await api('/api/create', { nakladnoy:nk, imzo:sigCreate, takror_ok:true });
+      }
+    }
     goPage(4);
     document.getElementById('okCreate').textContent = EDIT_ID ? ('№'+S.nomer+' — tuzatildi va qayta yopildi.') : ('№'+S.nomer+' — Master tasdiqlashiga yuborildi.');
     if(TG) setTimeout(()=>TG.close(), 2500);
