@@ -64,7 +64,10 @@ def init():
                      "op1_at", "op1_name", "op2_at", "op2_name",
                      # operator tizimi joriy etilishidan oldingi qoldiq belgisi —
                      # bunday yozuvlar panelda navbat sifatida ko'rinmaydi
-                     "tarixiy"):
+                     "tarixiy",
+                     # 17:30 dan keyin yopilgan накладной operatorlarga darrov
+                     # yuborilmaydi — ertasiga 08:30 da ketadi. Shu ustunda kutadi.
+                     "kechik"):
             try:
                 c.execute(f"ALTER TABLE nakladnoy ADD COLUMN {_col} TEXT")
             except Exception:
@@ -184,6 +187,27 @@ def operator_tozala(nid: int):
     with _conn() as c:
         c.execute("UPDATE nakladnoy SET op1_at=NULL, op1_name=NULL, "
                   "op2_at=NULL, op2_name=NULL WHERE id=?", (nid,))
+
+
+def kechiktir(nid: int):
+    """Operatorlarga yuborishni ertangi ish boshiga qoldiradi."""
+    with _conn() as c:
+        c.execute("UPDATE nakladnoy SET kechik=? WHERE id=?", (_now(), nid))
+
+
+def kechikni_tozala(nid: int):
+    with _conn() as c:
+        c.execute("UPDATE nakladnoy SET kechik=NULL WHERE id=?", (nid,))
+
+
+def kechikkanlar(limit: int = 200):
+    """Ish boshida operatorlarga yuborilishi kerak bo'lganlar (eskisidan boshlab)."""
+    with _conn() as c:
+        rows = c.execute(
+            "SELECT * FROM nakladnoy WHERE kechik IS NOT NULL AND kechik<>'' "
+            "AND status IN ('closed','accepted') ORDER BY id LIMIT ?", (limit,)
+        ).fetchall()
+    return [_row(r) for r in rows]
 
 
 def set_pdf_msgs(nid: int, msgs: dict):

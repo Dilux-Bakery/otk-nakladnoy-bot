@@ -462,19 +462,54 @@ async def api_update(request: Request):
 
 
 # ════════════════ PDF tarqatish ════════════════
+# Operatorlar ish vaqti. Shu oraliqdan tashqarida yopilgan накладной
+# operatorlarga DARROV yuborilmaydi — ertasi kuni ish boshida ketadi.
+# (Master va ГП avvalgidek istalgan vaqtda imzolayveradi.)
+ISH_BOSHI = os.environ.get("ISH_BOSHI", "08:30")
+ISH_OXIRI = os.environ.get("ISH_OXIRI", "17:30")
+
+
+def _vaqt_juft(matn, standart):
+    try:
+        h, m = (int(x) for x in matn.split(":"))
+        return h, m
+    except Exception:
+        return standart
+
+
+def _ish_vaqtimi(vaqt=None):
+    """Hozir operatorlarga yuborsa bo'ladimi?"""
+    v = vaqt or _now_local()
+    bh, bm = _vaqt_juft(ISH_BOSHI, (8, 30))
+    oh, om = _vaqt_juft(ISH_OXIRI, (17, 30))
+    hozir = v.hour * 60 + v.minute
+    return bh * 60 + bm <= hozir < oh * 60 + om
+
+
 async def distribute_pdf(n: dict):
     fname = _fname(n)
     cap = _pdf_matni(n)
     msgs = {}
+    ish = _ish_vaqtimi()
     for chat_id in config.pdf_recipients():
-        if chat_id:
-            # Operator-2 albom (clean) nusxa oladi, qolganlar to'liq portret
-            # Tugmalar ham har kimga o'z vazifasiga qarab beriladi.
-            r = await send_pdf(chat_id, _gen_pdf(n, chat_id), fname, cap,
-                               _pdf_tugmalari(n, chat_id))
-            mid = ((r or {}).get("result") or {}).get("message_id")
-            if mid:
-                msgs[chat_id] = mid
+        if not chat_id:
+            continue
+        # Ish vaqtidan tashqarida operatorlarga yubormaymiz — ertaga ketadi.
+        # Rahbar esa darrov oladi (u kuzatib boradi).
+        if not ish and operator_raqami(chat_id):
+            continue
+        # Operator-2 albom (clean) nusxa oladi, qolganlar to'liq portret
+        # Tugmalar ham har kimga o'z vazifasiga qarab beriladi.
+        r = await send_pdf(chat_id, _gen_pdf(n, chat_id), fname, cap,
+                           _pdf_tugmalari(n, chat_id))
+        mid = ((r or {}).get("result") or {}).get("message_id")
+        if mid:
+            msgs[chat_id] = mid
+
+    if ish:
+        db.kechikni_tozala(n["id"])
+    else:
+        db.kechiktir(n["id"])          # ertangi ish boshida yuboriladi
     # Kim qaysi xabarni olganini eslab qolamiz — biri javob berganda
     # qolganlarining tugmasini olib tashlash uchun (ikki marta qaytarilmasin).
     db.set_pdf_msgs(n["id"], msgs)
@@ -979,6 +1014,59 @@ async def send_daily_report(date_str):
             await send_report_to(chat_id, date_str)
 
 
+async def kechikkanlarni_yubor():
+    """Ish boshida — kechqurun yopilgan накладнойlarni operatorlarga yuboradi."""
+    royxat = db.kechikkanlar()
+    if not royxat:
+        return 0
+    yuborildi = 0
+    for n in royxat:
+        try:
+            msgs = db.get_pdf_msgs(n["id"]) or {}
+            fname, cap = _fname(n), _pdf_matni(n)
+            for chat_id in config.pdf_recipients():
+                if not chat_id or not operator_raqami(chat_id):
+                    continue                       # faqat operatorlarga
+                if str(chat_id) in msgs:
+                    continue                       # allaqachon olgan
+                r = await send_pdf(chat_id, _gen_pdf(n, chat_id), fname, cap,
+                                   _pdf_tugmalari(n, chat_id))
+                mid = ((r or {}).get("result") or {}).get("message_id")
+                if mid:
+                    msgs[chat_id] = mid
+            db.set_pdf_msgs(n["id"], msgs)
+            db.kechikni_tozala(n["id"])
+            yuborildi += 1
+        except Exception as e:
+            print("Kechikkan накладной yuborilmadi:", n.get("id"), e)
+    if yuborildi:
+        print(f"🌅 Ish boshi: {yuborildi} ta накладной operatorlarga yuborildi")
+    return yuborildi
+
+
+async def ish_boshi_loop():
+    """Har kuni ISH_BOSHI (mas. 08:30) da kechqurungi накладнойlarni yuboradi.
+    Bot tunda o'chib qolgan bo'lsa — ish vaqtida ko'tarilishi bilan ham yuboradi."""
+    await asyncio.sleep(20)                        # startdan keyin biroz kutamiz
+    try:
+        if _ish_vaqtimi():                         # ish vaqtida ishga tushdi — qoldiqni beramiz
+            await kechikkanlarni_yubor()
+    except Exception as e:
+        print("Ish boshi (start) xato:", e)
+
+    bh, bm = _vaqt_juft(ISH_BOSHI, (8, 30))
+    while True:
+        now = _now_local()
+        target = now.replace(hour=bh, minute=bm, second=0, microsecond=0)
+        if target <= now:
+            target += timedelta(days=1)
+        await asyncio.sleep(max(1, (target - now).total_seconds()))
+        try:
+            await kechikkanlarni_yubor()
+        except Exception as e:
+            print("Ish boshi xato:", e)
+
+
 async def daily_report_loop():
     """Har kuni REPORT_TIME (mas. 18:30) da hisobotни yuboradi."""
     hhmm = getattr(config, "REPORT_TIME", "18:30")
@@ -1004,6 +1092,8 @@ async def daily_report_loop():
 async def _startup():
     db.init()
     asyncio.create_task(daily_report_loop())
+    asyncio.create_task(ish_boshi_loop())
+    print(f"🌅 Operatorlarga yuborish oynasi: {ISH_BOSHI} – {ISH_OXIRI}")
     print("⏰ Kunlik hisobot rejalashtirildi:", getattr(config, "REPORT_TIME", "18:30"))
     if config.BASE_URL and "example.com" not in config.BASE_URL:
         res = await tg("setWebhook", url=f"{config.BASE_URL}/webhook",
