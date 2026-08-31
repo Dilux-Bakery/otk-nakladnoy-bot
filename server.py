@@ -470,10 +470,38 @@ async def distribute_pdf(n: dict):
         {"text": "✅ Qabul qilindi", "callback_data": f"acc:{n['id']}"},
         {"text": "↩️ Xato — qaytarish", "callback_data": f"ret:{n['id']}"},
     ]]}
+    msgs = {}
     for chat_id in config.pdf_recipients():
         if chat_id:
             # Operator-2 albom (clean) nusxa oladi, qolganlar to'liq portret
-            await send_pdf(chat_id, _gen_pdf(n, chat_id), fname, cap, kb)
+            r = await send_pdf(chat_id, _gen_pdf(n, chat_id), fname, cap, kb)
+            mid = ((r or {}).get("result") or {}).get("message_id")
+            if mid:
+                msgs[chat_id] = mid
+    # Kim qaysi xabarni olganini eslab qolamiz — biri javob berganda
+    # qolganlarining tugmasini olib tashlash uchun (ikki marta qaytarilmasin).
+    db.set_pdf_msgs(n["id"], msgs)
+
+
+async def boshqalarni_yopish(nid: int, xabar: str, bosgan_chat):
+    """Operatorlardan biri javob bergach, QOLGANLARNING xabaridagi tugmalarni
+    olib tashlaydi va nima bo'lganini yozib qo'yadi.
+
+    Shusiz: birinchi operator "xato" deb qaytaradi, ikkinchisida xabar
+    tugmasi bilan turaveradi va u ham qaytarib yuboradi — natijada bitta
+    накладной ikki marta qaytarilgan bo'lib chiqadi.
+    """
+    for chat_str, mid in (db.get_pdf_msgs(nid) or {}).items():
+        try:
+            chat = int(chat_str)
+        except (TypeError, ValueError):
+            continue
+        if bosgan_chat is not None and chat == int(bosgan_chat):
+            continue          # bosgan odamning xabari baribir o'chiriladi
+        # reply_markup bermaymiz — Telegram tugmalarni olib tashlaydi
+        await tg("editMessageCaption", chat_id=chat, message_id=mid,
+                 caption=xabar, parse_mode="HTML")
+    db.set_pdf_msgs(nid, {})
 
 
 # ════════════════ Telegram webhook ════════════════
@@ -614,18 +642,36 @@ async def on_callback(cb):
     if role["role"] not in ("operator", "rahbar"):
         return await tg("answerCallbackQuery", callback_query_id=cid, text="Ruxsat yo‘q")
     who = cb["from"].get("first_name", "") or "xodim"
+
+    # Eski xabar himoyasi: bosilgan xabar shu накладнойning JORIY xabarimi?
+    # (Telegram 48 soatdan eski xabarni tahrirlashga ruxsat bermaydi — o'shanda
+    #  tugma qolib ketishi mumkin. Bu tekshiruv o'sha holatni ham yopadi.)
+    if action in ("acc", "ret"):
+        joriy = db.get_pdf_msgs(nid) or {}
+        kutilgan = joriy.get(str(chat_id))
+        if kutilgan is not None and int(kutilgan) != int(mid):
+            return await tg(
+                "answerCallbackQuery", callback_query_id=cid, show_alert=True,
+                text="Bu eski xabar. Накладной shundan keyin yangilangan — "
+                     "eng oxirgi xabarga qarang.")
+
     if action == "acc":
         if n["status"] != "closed":
             return await tg("answerCallbackQuery", callback_query_id=cid, text="Allaqachon: " + ST_UZ.get(n["status"], n["status"]))
         db.set_status(nid, "accepted")                 # bazada saqlanadi
         await tg("answerCallbackQuery", callback_query_id=cid, text="✅ Qabul qilindi")
         await tg("deleteMessage", chat_id=chat_id, message_id=mid)   # chatdan o'chadi
+        await boshqalarni_yopish(
+            nid, f"✅ <b>{_ref(n)}</b> — qabul qilindi ({who}).", chat_id)
     elif action == "ret":
         if n["status"] not in ("closed", "accepted"):
             return await tg("answerCallbackQuery", callback_query_id=cid, text="Allaqachon: " + ST_UZ.get(n["status"], n["status"]))
         db.set_status(nid, "returned")                 # bazada saqlanadi
         await tg("answerCallbackQuery", callback_query_id=cid, text="↩️ Qaytarildi — OTK tuzatadi")
         await tg("deleteMessage", chat_id=chat_id, message_id=mid)   # chatdan o'chadi
+        await boshqalarni_yopish(
+            nid, f"↩️ <b>{_ref(n)}</b> — <b>{who}</b> xato deb qaytardi.\n"
+                 f"OTK tuzatmoqda, sizdan javob kutilmaydi.", chat_id)
         if n.get("otk_id"):
             r = await send_message(
                 n["otk_id"],

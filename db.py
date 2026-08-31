@@ -58,7 +58,7 @@ def init():
         # migratsiya: eski bazaga yangi ustunlar (bo'lmasa)
         for _col in ("sistema", "schet_w", "schet_k", "kamchilik",
                      "otk_ip", "master_ip", "gp_ip", "edit_msg", "sign_msg",
-                     "takror_ok"):
+                     "takror_ok", "pdf_msgs"):
             try:
                 c.execute(f"ALTER TABLE nakladnoy ADD COLUMN {_col} TEXT")
             except Exception:
@@ -153,6 +153,25 @@ def set_sign_msg(nid: int, mid):
     """Master/ГП ga yuborilган 'Ko'rib imzolash' xabari id'si (imzodan keyin o'chirish uchun)."""
     with _conn() as c:
         c.execute("UPDATE nakladnoy SET sign_msg=? WHERE id=?", (str(mid) if mid else "", nid))
+
+
+def set_pdf_msgs(nid: int, msgs: dict):
+    """Yopilgan накладной PDF si kimga, qaysi xabar bilan borganini eslab qoladi:
+    {chat_id: message_id}. Biri qabul qilsa yoki qaytarsa — QOLGANLARNING
+    tugmasi olib tashlanadi, shunda ikkinchi odam eski xabarga bosa olmaydi."""
+    with _conn() as c:
+        c.execute("UPDATE nakladnoy SET pdf_msgs=? WHERE id=?",
+                  (json.dumps({str(k): v for k, v in (msgs or {}).items()}), nid))
+
+
+def get_pdf_msgs(nid: int) -> dict:
+    n = get(nid)
+    if not n:
+        return {}
+    try:
+        return json.loads(n.get("pdf_msgs") or "{}")
+    except Exception:
+        return {}
 
 
 def set_takror(nid: int, izoh: str):
