@@ -16,9 +16,18 @@ ZAX=/home/Acer/otk-bot/backups
 cd "$APP" || exit 1
 
 yoz() { echo "$(date '+%F %T') $*" >>"$LOG"; }
-gitq() { sudo -u Acer git "$@"; }
+# GIT_TERMINAL_PROMPT=0 — hech qachon parol so'rab osilib qolmasin.
+# credential.helper bo'sh — saqlangan kalit qidirilmasin (repo ochiq, kerak emas).
+gitq() { sudo -u Acer env GIT_TERMINAL_PROMPT=0 git -c credential.helper= -c core.askPass=true "$@"; }
 
-gitq fetch origin main --quiet 2>>"$LOG" || { yoz "fetch xato — o'tkazib yuborildi"; exit 0; }
+# GitHub ba'zan vaqtincha javob bermaydi (so'rov cheklovi, tarmoq uzilishi).
+# Shu sabab bitta urinish bilan taslim bo'lmaymiz — 3 marta urinamiz.
+olindi=0
+for urinish in 1 2 3; do
+    if gitq fetch origin main --quiet 2>>"$LOG"; then olindi=1; break; fi
+    [ "$urinish" -lt 3 ] && sleep 15
+done
+[ "$olindi" = 1 ] || { yoz "fetch 3 marta urinishda ham xato — o'tkazib yuborildi"; exit 0; }
 LOCAL=$(gitq rev-parse HEAD)
 REMOTE=$(gitq rev-parse origin/main)
 [ "$LOCAL" = "$REMOTE" ] && exit 0     # o'zgarish yo'q
