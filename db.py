@@ -58,7 +58,10 @@ def init():
         # migratsiya: eski bazaga yangi ustunlar (bo'lmasa)
         for _col in ("sistema", "schet_w", "schet_k", "kamchilik",
                      "otk_ip", "master_ip", "gp_ip", "edit_msg", "sign_msg",
-                     "takror_ok", "pdf_msgs"):
+                     "takror_ok", "pdf_msgs",
+                     # Har bir operator O'Z vazifasi bo'yicha alohida tasdiqlaydi.
+                     # Ikkalasi ham tasdiqlagandagina status 'accepted' bo'ladi.
+                     "op1_at", "op1_name", "op2_at", "op2_name"):
             try:
                 c.execute(f"ALTER TABLE nakladnoy ADD COLUMN {_col} TEXT")
             except Exception:
@@ -153,6 +156,31 @@ def set_sign_msg(nid: int, mid):
     """Master/ГП ga yuborilган 'Ko'rib imzolash' xabari id'si (imzodan keyin o'chirish uchun)."""
     with _conn() as c:
         c.execute("UPDATE nakladnoy SET sign_msg=? WHERE id=?", (str(mid) if mid else "", nid))
+
+
+def operator_qabul(nid: int, raqam: int, nom: str):
+    """Bitta operator O'Z vazifasi bo'yicha qabul qildi (raqam: 1 yoki 2).
+    Ikkalasi ham qabul qilgandagina status 'accepted' bo'ladi.
+    Qaytadi: yangilangan накладной."""
+    if raqam not in (1, 2):
+        return get(nid)
+    now = _now()
+    with _conn() as c:
+        c.execute(f"UPDATE nakladnoy SET op{raqam}_at=?, op{raqam}_name=? WHERE id=?",
+                  (now, nom or "", nid))
+        r = c.execute("SELECT op1_at, op2_at, status FROM nakladnoy WHERE id=?",
+                      (nid,)).fetchone()
+        if r and (r["op1_at"] or "") and (r["op2_at"] or "") and r["status"] == "closed":
+            c.execute("UPDATE nakladnoy SET status='accepted' WHERE id=?", (nid,))
+    return get(nid)
+
+
+def operator_tozala(nid: int):
+    """Накладной qaytarilganda operatorlar javobi bekor qilinadi —
+    tuzatilgandan keyin ikkalasi ham qaytadan ko'rib chiqishi kerak."""
+    with _conn() as c:
+        c.execute("UPDATE nakladnoy SET op1_at=NULL, op1_name=NULL, "
+                  "op2_at=NULL, op2_name=NULL WHERE id=?", (nid,))
 
 
 def set_pdf_msgs(nid: int, msgs: dict):

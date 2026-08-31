@@ -464,17 +464,14 @@ async def api_update(request: Request):
 # ════════════════ PDF tarqatish ════════════════
 async def distribute_pdf(n: dict):
     fname = _fname(n)
-    cap = (f"✅ <b>{_ref(n)}</b> ({pdf.TUR_LABEL.get(n.get('tur'))}) yopildi\n"
-           f"{n.get('mtur','')} · {n.get('rang','')}\nTo‘g‘rimi? 👇")
-    kb = {"inline_keyboard": [[
-        {"text": "✅ Qabul qilindi", "callback_data": f"acc:{n['id']}"},
-        {"text": "↩️ Xato — qaytarish", "callback_data": f"ret:{n['id']}"},
-    ]]}
+    cap = _pdf_matni(n)
     msgs = {}
     for chat_id in config.pdf_recipients():
         if chat_id:
             # Operator-2 albom (clean) nusxa oladi, qolganlar to'liq portret
-            r = await send_pdf(chat_id, _gen_pdf(n, chat_id), fname, cap, kb)
+            # Tugmalar ham har kimga o'z vazifasiga qarab beriladi.
+            r = await send_pdf(chat_id, _gen_pdf(n, chat_id), fname, cap,
+                               _pdf_tugmalari(n, chat_id))
             mid = ((r or {}).get("result") or {}).get("message_id")
             if mid:
                 msgs[chat_id] = mid
@@ -483,41 +480,75 @@ async def distribute_pdf(n: dict):
     db.set_pdf_msgs(n["id"], msgs)
 
 
-def qaytarish_tugmasi(nid):
-    return {"inline_keyboard": [[
-        {"text": "↩️ Xato — qaytarish", "callback_data": f"ret:{nid}"}]]}
+def operator_raqami(uid):
+    """Shu odam nechanchi operator? 1, 2 yoki None (rahbar/boshqa)."""
+    try:
+        return config.OPERATORS.index(int(uid)) + 1
+    except (ValueError, TypeError):
+        return None
 
 
-async def boshqalarni_xabardor_qil(nid: int, xabar: str, bosgan_chat,
-                                   tugma=None, tozala=True):
-    """Operatorlardan biri javob bergach, QOLGANLARIGA nima bo'lganini yozadi.
+def _operatorlar_holati(n):
+    """Kim javob berdi, kim kutilmoqda — ikkalasiga ham ko'rinadi."""
+    q = []
+    for i in (1, 2):
+        vaqt = (n.get(f"op{i}_at") or "").strip()
+        nom = (n.get(f"op{i}_name") or "").strip()
+        if vaqt:
+            q.append(f"{i}-operator: ✅ {nom or 'qabul qildi'} ({vaqt[11:16]})")
+        else:
+            q.append(f"{i}-operator: ⏳ kutilmoqda")
+    return "\n".join(q)
 
-    tugma=None  -> tugmalar olib tashlanadi (qaytarilganda: ish OTK da,
-                   ikkinchi marta qaytarishning ma'nosi yo'q)
-    tugma bor   -> faqat o'sha tugma qoladi (qabul qilinganda: ikkinchi
-                   operator keyin xato topsa ham qaytara olishi kerak)
+
+def _pdf_matni(n):
+    bosh = (f"✅ <b>{_ref(n)}</b> ({pdf.TUR_LABEL.get(n.get('tur'))}) yopildi\n"
+            f"{n.get('mtur','')} · {n.get('rang','')}")
+    if n.get("status") == "returned":
+        return bosh + "\n\n↩️ <b>Xato deb qaytarildi</b> — OTK tuzatmoqda."
+    if n.get("status") == "cancelled":
+        return bosh + "\n\n🚫 Bekor qilingan."
+    return bosh + "\n\n" + _operatorlar_holati(n)
+
+
+def _pdf_tugmalari(n, chat_id):
+    """Har kimga O'Z vazifasiga mos tugma.
+    - o'z qabulini bermagan operator: 'Qabul' + 'Qaytarish'
+    - qabul qilib bo'lgan operator va rahbar: faqat 'Qaytarish'
+      (keyinroq xato topsa ham qaytara olsin)
     """
-    msgs = db.get_pdf_msgs(nid) or {}
-    for chat_str, mid in msgs.items():
+    if n.get("status") not in ("closed", "accepted"):
+        return None
+    nid = n["id"]
+    qator = []
+    raqam = operator_raqami(chat_id)
+    if raqam and not (n.get(f"op{raqam}_at") or "").strip():
+        qator.append({"text": "✅ Qabul qilindi", "callback_data": f"acc:{nid}"})
+    qator.append({"text": "↩️ Xato — qaytarish", "callback_data": f"ret:{nid}"})
+    return {"inline_keyboard": [qator]}
+
+
+async def xabarlarni_yangila(nid: int, qoshimcha: str = ""):
+    """Barcha oluvchining xabarini joriy holatga va uning roliga qarab yangilaydi.
+    Shu tufayli har kim ikkinchisining nima qilganini KO'RIB turadi —
+    alohida nazorat qilib o'tirish shart emas."""
+    n = db.get(nid)
+    if not n:
+        return
+    matn = _pdf_matni(n)
+    if qoshimcha:
+        matn += "\n" + qoshimcha
+    for chat_str, msg_id in (db.get_pdf_msgs(nid) or {}).items():
         try:
             chat = int(chat_str)
         except (TypeError, ValueError):
             continue
-        if bosgan_chat is not None and chat == int(bosgan_chat):
-            continue          # bosgan odamning xabari baribir o'chiriladi
-        p = {"chat_id": chat, "message_id": mid, "caption": xabar,
+        p = {"chat_id": chat, "message_id": msg_id, "caption": matn,
              "parse_mode": "HTML"}
-        if tugma:
-            p["reply_markup"] = tugma      # bermasak Telegram tugmani olib tashlaydi
+        kb = _pdf_tugmalari(n, chat)
+        if kb:
+            p["reply_markup"] = kb      # bermasak Telegram tugmalarni olib tashlaydi
         await tg("editMessageCaption", **p)
-
-    if tozala:
-        db.set_pdf_msgs(nid, {})
-    elif bosgan_chat is not None:
-        # bosgan odamning xabari o'chirildi — ro'yxatdan chiqaramiz,
-        # qolganlariniki kuzatuvda qoladi (eski xabar tekshiruvi ishlashi uchun)
-        msgs.pop(str(bosgan_chat), None)
-        db.set_pdf_msgs(nid, msgs)
 
 
 # ════════════════ Telegram webhook ════════════════
@@ -672,29 +703,34 @@ async def on_callback(cb):
                      "eng oxirgi xabarga qarang.")
 
     if action == "acc":
-        if n["status"] != "closed":
+        if n["status"] not in ("closed", "accepted"):
             return await tg("answerCallbackQuery", callback_query_id=cid, text="Allaqachon: " + ST_UZ.get(n["status"], n["status"]))
-        db.set_status(nid, "accepted")                 # bazada saqlanadi
-        await tg("answerCallbackQuery", callback_query_id=cid, text="✅ Qabul qilindi")
-        await tg("deleteMessage", chat_id=chat_id, message_id=mid)   # chatdan o'chadi
-        # Qabul qilish boshqalar uchun YAKUN emas — ikkinchi operator keyin
-        # xato topsa, o'sha накладнойни qaytara olishi kerak.
-        await boshqalarni_xabardor_qil(
-            nid,
-            f"✅ <b>{_ref(n)}</b> — <b>{who}</b> qabul qildi.\n"
-            f"Xato topsangiz hali ham qaytara olasiz 👇",
-            chat_id, tugma=qaytarish_tugmasi(nid), tozala=False)
+        raqam = operator_raqami(uid)
+        if not raqam:
+            return await tg("answerCallbackQuery", callback_query_id=cid,
+                            text="Qabul qilishni operatorlar bosadi")
+        if (n.get(f"op{raqam}_at") or "").strip():
+            return await tg("answerCallbackQuery", callback_query_id=cid,
+                            text="Siz allaqachon qabul qilgansiz")
+        # Har operator FAQAT o'z vazifasini tasdiqlaydi. Ikkalasi ham
+        # tasdiqlagandagina накладной to'liq qabul qilingan bo'ladi.
+        yangi = db.operator_qabul(nid, raqam, who)
+        await tg("answerCallbackQuery", callback_query_id=cid,
+                 text=("✅ Ikkalangiz ham tasdiqladingiz"
+                       if yangi["status"] == "accepted"
+                       else f"✅ Qabul qilindi. {3 - raqam}-operator javobi kutilmoqda"))
+        await xabarlarni_yangila(nid)
     elif action == "ret":
         if n["status"] not in ("closed", "accepted"):
             return await tg("answerCallbackQuery", callback_query_id=cid, text="Allaqachon: " + ST_UZ.get(n["status"], n["status"]))
         db.set_status(nid, "returned")                 # bazada saqlanadi
+        # Tuzatilgandan keyin IKKALASI ham qaytadan ko'rib chiqishi kerak
+        db.operator_tozala(nid)
         await tg("answerCallbackQuery", callback_query_id=cid, text="↩️ Qaytarildi — OTK tuzatadi")
-        await tg("deleteMessage", chat_id=chat_id, message_id=mid)   # chatdan o'chadi
-        # Qaytarish — YAKUN: накладной OTK ga ketdi, boshqalar javob bermaydi.
-        await boshqalarni_xabardor_qil(
-            nid, f"↩️ <b>{_ref(n)}</b> — <b>{who}</b> xato deb qaytardi.\n"
-                 f"OTK tuzatmoqda, sizdan javob kutilmaydi.",
-            chat_id, tugma=None, tozala=True)
+        # Qaytarish — YAKUN: накладной OTK ga ketdi. Hamma xabarda tugma
+        # olib tashlanadi va kim qaytargani yoziladi.
+        await xabarlarni_yangila(nid, qoshimcha=f"Qaytargan: <b>{who}</b>")
+        db.set_pdf_msgs(nid, {})
         if n.get("otk_id"):
             r = await send_message(
                 n["otk_id"],
