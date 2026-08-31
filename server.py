@@ -483,25 +483,41 @@ async def distribute_pdf(n: dict):
     db.set_pdf_msgs(n["id"], msgs)
 
 
-async def boshqalarni_yopish(nid: int, xabar: str, bosgan_chat):
-    """Operatorlardan biri javob bergach, QOLGANLARNING xabaridagi tugmalarni
-    olib tashlaydi va nima bo'lganini yozib qo'yadi.
+def qaytarish_tugmasi(nid):
+    return {"inline_keyboard": [[
+        {"text": "↩️ Xato — qaytarish", "callback_data": f"ret:{nid}"}]]}
 
-    Shusiz: birinchi operator "xato" deb qaytaradi, ikkinchisida xabar
-    tugmasi bilan turaveradi va u ham qaytarib yuboradi — natijada bitta
-    накладной ikki marta qaytarilgan bo'lib chiqadi.
+
+async def boshqalarni_xabardor_qil(nid: int, xabar: str, bosgan_chat,
+                                   tugma=None, tozala=True):
+    """Operatorlardan biri javob bergach, QOLGANLARIGA nima bo'lganini yozadi.
+
+    tugma=None  -> tugmalar olib tashlanadi (qaytarilganda: ish OTK da,
+                   ikkinchi marta qaytarishning ma'nosi yo'q)
+    tugma bor   -> faqat o'sha tugma qoladi (qabul qilinganda: ikkinchi
+                   operator keyin xato topsa ham qaytara olishi kerak)
     """
-    for chat_str, mid in (db.get_pdf_msgs(nid) or {}).items():
+    msgs = db.get_pdf_msgs(nid) or {}
+    for chat_str, mid in msgs.items():
         try:
             chat = int(chat_str)
         except (TypeError, ValueError):
             continue
         if bosgan_chat is not None and chat == int(bosgan_chat):
             continue          # bosgan odamning xabari baribir o'chiriladi
-        # reply_markup bermaymiz — Telegram tugmalarni olib tashlaydi
-        await tg("editMessageCaption", chat_id=chat, message_id=mid,
-                 caption=xabar, parse_mode="HTML")
-    db.set_pdf_msgs(nid, {})
+        p = {"chat_id": chat, "message_id": mid, "caption": xabar,
+             "parse_mode": "HTML"}
+        if tugma:
+            p["reply_markup"] = tugma      # bermasak Telegram tugmani olib tashlaydi
+        await tg("editMessageCaption", **p)
+
+    if tozala:
+        db.set_pdf_msgs(nid, {})
+    elif bosgan_chat is not None:
+        # bosgan odamning xabari o'chirildi — ro'yxatdan chiqaramiz,
+        # qolganlariniki kuzatuvda qoladi (eski xabar tekshiruvi ishlashi uchun)
+        msgs.pop(str(bosgan_chat), None)
+        db.set_pdf_msgs(nid, msgs)
 
 
 # ════════════════ Telegram webhook ════════════════
@@ -661,17 +677,24 @@ async def on_callback(cb):
         db.set_status(nid, "accepted")                 # bazada saqlanadi
         await tg("answerCallbackQuery", callback_query_id=cid, text="✅ Qabul qilindi")
         await tg("deleteMessage", chat_id=chat_id, message_id=mid)   # chatdan o'chadi
-        await boshqalarni_yopish(
-            nid, f"✅ <b>{_ref(n)}</b> — qabul qilindi ({who}).", chat_id)
+        # Qabul qilish boshqalar uchun YAKUN emas — ikkinchi operator keyin
+        # xato topsa, o'sha накладнойни qaytara olishi kerak.
+        await boshqalarni_xabardor_qil(
+            nid,
+            f"✅ <b>{_ref(n)}</b> — <b>{who}</b> qabul qildi.\n"
+            f"Xato topsangiz hali ham qaytara olasiz 👇",
+            chat_id, tugma=qaytarish_tugmasi(nid), tozala=False)
     elif action == "ret":
         if n["status"] not in ("closed", "accepted"):
             return await tg("answerCallbackQuery", callback_query_id=cid, text="Allaqachon: " + ST_UZ.get(n["status"], n["status"]))
         db.set_status(nid, "returned")                 # bazada saqlanadi
         await tg("answerCallbackQuery", callback_query_id=cid, text="↩️ Qaytarildi — OTK tuzatadi")
         await tg("deleteMessage", chat_id=chat_id, message_id=mid)   # chatdan o'chadi
-        await boshqalarni_yopish(
+        # Qaytarish — YAKUN: накладной OTK ga ketdi, boshqalar javob bermaydi.
+        await boshqalarni_xabardor_qil(
             nid, f"↩️ <b>{_ref(n)}</b> — <b>{who}</b> xato deb qaytardi.\n"
-                 f"OTK tuzatmoqda, sizdan javob kutilmaydi.", chat_id)
+                 f"OTK tuzatmoqda, sizdan javob kutilmaydi.",
+            chat_id, tugma=None, tozala=True)
         if n.get("otk_id"):
             r = await send_message(
                 n["otk_id"],
