@@ -719,6 +719,15 @@ async def on_callback(cb):
                  text=("✅ Ikkalangiz ham tasdiqladingiz"
                        if yangi["status"] == "accepted"
                        else f"✅ Qabul qilindi. {3 - raqam}-operator javobi kutilmoqda"))
+
+        # O'z vazifasini bajardi — xabar CHATDAN olib tashlanadi (chat toza qoladi).
+        # Bazada esa hammasi saqlanib qoladi: kim, qachon qabul qilgani ham.
+        await tg("deleteMessage", chat_id=chat_id, message_id=mid)
+        msgs = db.get_pdf_msgs(nid) or {}
+        msgs.pop(str(chat_id), None)
+        db.set_pdf_msgs(nid, msgs)
+
+        # Qolganlarga (ikkinchi operator va rahbar) holat yangilanadi
         await xabarlarni_yangila(nid)
     elif action == "ret":
         if n["status"] not in ("closed", "accepted"):
@@ -727,8 +736,15 @@ async def on_callback(cb):
         # Tuzatilgandan keyin IKKALASI ham qaytadan ko'rib chiqishi kerak
         db.operator_tozala(nid)
         await tg("answerCallbackQuery", callback_query_id=cid, text="↩️ Qaytarildi — OTK tuzatadi")
-        # Qaytarish — YAKUN: накладной OTK ga ketdi. Hamma xabarda tugma
-        # olib tashlanadi va kim qaytargani yoziladi.
+
+        # Bosgan odamning xabari chatdan ketadi (bazada saqlanadi)
+        await tg("deleteMessage", chat_id=chat_id, message_id=mid)
+        msgs = db.get_pdf_msgs(nid) or {}
+        msgs.pop(str(chat_id), None)
+        db.set_pdf_msgs(nid, msgs)
+
+        # Qolganlarga: kim qaytargani yoziladi, tugmalar olib tashlanadi —
+        # ular bu накладнойни kutib o'tirmasin.
         await xabarlarni_yangila(nid, qoshimcha=f"Qaytargan: <b>{who}</b>")
         db.set_pdf_msgs(nid, {})
         if n.get("otk_id"):
