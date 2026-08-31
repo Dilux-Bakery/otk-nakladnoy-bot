@@ -467,6 +467,9 @@ async def api_update(request: Request):
 # (Master va ГП avvalgidek istalgan vaqtda imzolayveradi.)
 ISH_BOSHI = os.environ.get("ISH_BOSHI", "08:30")
 ISH_OXIRI = os.environ.get("ISH_OXIRI", "17:30")
+# Qoida shu kundan boshlab ishlaydi. Ungacha накладной istalgan vaqtda
+# darrov yuboriladi (oy oxiri yopilishi va bayram kuni sabab).
+QOIDA_BOSHLANISH = os.environ.get("ISH_QOIDA_BOSHI", "2026-09-02")
 
 
 def _vaqt_juft(matn, standart):
@@ -477,9 +480,18 @@ def _vaqt_juft(matn, standart):
         return standart
 
 
-def _ish_vaqtimi(vaqt=None):
-    """Hozir operatorlarga yuborsa bo'ladimi?"""
+def _qoida_kuchdami(vaqt=None):
+    """Ish vaqti qoidasi allaqachon kuchga kirganmi?"""
     v = vaqt or _now_local()
+    return v.strftime("%Y-%m-%d") >= QOIDA_BOSHLANISH
+
+
+def _ish_vaqtimi(vaqt=None):
+    """Hozir operatorlarga yuborsa bo'ladimi?
+    Qoida kuchga kirmagan bo'lsa — har doim ha."""
+    v = vaqt or _now_local()
+    if not _qoida_kuchdami(v):
+        return True
     bh, bm = _vaqt_juft(ISH_BOSHI, (8, 30))
     oh, om = _vaqt_juft(ISH_OXIRI, (17, 30))
     hozir = v.hour * 60 + v.minute
@@ -1093,7 +1105,8 @@ async def _startup():
     db.init()
     asyncio.create_task(daily_report_loop())
     asyncio.create_task(ish_boshi_loop())
-    print(f"🌅 Operatorlarga yuborish oynasi: {ISH_BOSHI} – {ISH_OXIRI}")
+    print(f"🌅 Operatorlarga yuborish oynasi: {ISH_BOSHI} – {ISH_OXIRI} "
+          f"({'kuchda' if _qoida_kuchdami() else QOIDA_BOSHLANISH + ' dan boshlab'})")
     print("⏰ Kunlik hisobot rejalashtirildi:", getattr(config, "REPORT_TIME", "18:30"))
     if config.BASE_URL and "example.com" not in config.BASE_URL:
         res = await tg("setWebhook", url=f"{config.BASE_URL}/webhook",
