@@ -61,7 +61,10 @@ def init():
                      "takror_ok", "pdf_msgs",
                      # Har bir operator O'Z vazifasi bo'yicha alohida tasdiqlaydi.
                      # Ikkalasi ham tasdiqlagandagina status 'accepted' bo'ladi.
-                     "op1_at", "op1_name", "op2_at", "op2_name"):
+                     "op1_at", "op1_name", "op2_at", "op2_name",
+                     # operator tizimi joriy etilishidan oldingi qoldiq belgisi —
+                     # bunday yozuvlar panelda navbat sifatida ko'rinmaydi
+                     "tarixiy"):
             try:
                 c.execute(f"ALTER TABLE nakladnoy ADD COLUMN {_col} TEXT")
             except Exception:
