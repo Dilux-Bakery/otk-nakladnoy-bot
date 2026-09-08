@@ -344,11 +344,20 @@ async function submitCreate(){
       } catch(e) {
         const d = e.data && e.data.dup;
         if(!d) throw e;
-        // Takror topildi — қайси ҳужжат билан уришганини кўрсатиб, онгли тасдиқ сўраймиз
-        const savol = '⚠️ БУНДАЙ НАКЛАДНОЙ АЛЛАҚАЧОН БОР\n\n'
+        // Takror topildi — қайси ҳужжат билан уришганини кўрсатиб, онгли тасдиқ сўраймиз.
+        // sabab='olcham' — матн бошқача ёзилган, лекин ўлчамлар айнан бир хил.
+        const olcham = (d.sabab === 'olcham');
+        const savol = (olcham
+              ? '⚠️ ШУ СЧЁТ БЎЙИЧА АЙНАН ШУНДАЙ ЎЛЧАМЛИ НАКЛАДНОЙ БОР\n\n'
+              : '⚠️ БУНДАЙ НАКЛАДНОЙ АЛЛАҚАЧОН БОР\n\n')
           + '№' + d.nomer + '  ·  Счёт ' + d.schet + '\n'
           + d.sana + '  ·  ' + d.kim + '\n'
-          + 'Ҳолати: ' + d.holat + '\n\n'
+          + 'Ҳолати: ' + d.holat + '\n'
+          + (olcham && d.profil ? 'Профиль: ' + d.profil + '\n' : '')
+          + '\n'
+          + (olcham
+              ? 'Ўлчамлар бир хил, лекин матн бошқача ёзилган.\nАввал ўша ҳужжатни текшириб кўринг.\n\n'
+              : '')
           + 'Бу ҲАҚИҚАТАН янги етказиб бериш бўлса — OK босинг.\n'
           + 'Адашиб иккинчи марта киритаётган бўлсангиз — Бекор қилинг.';
         if(!confirm(savol)) { btn.disabled=false; btn.textContent='✓ Yuborish'; return; }

@@ -113,6 +113,33 @@ def _sig(tur, schet, mtur, rang, profil, items):
     return hashlib.md5(raw.encode("utf-8")).hexdigest()
 
 
+def _olcham_sig(items):
+    """FAQAT o'lchamlar imzosi — matn (профиль/махсулот/ранг) hisobga olinmaydi.
+
+    Sabab: takror ba'zan matn boshqacha yozilgani uchun _sig() dan o'tib ketadi.
+    Masalan 07.09.2026 da счёт 71002096 bo'yicha «ТРИО 6000» va
+    «ТРИО 6000 П-- 217» ikki xil imzo bergan, holbuki o'lchamlar bir xil edi.
+    """
+    return "#".join(sorted(
+        "%s/%s/%s/%s" % (_norm_num(it.get("kvo")), _norm_num(it.get("shr")),
+                         _norm_num(it.get("dln")), _norm_num(it.get("kv2")))
+        for it in (items or [])
+    ))
+
+
+def _kv2_jami(items):
+    """Umumiy кв². 0 bo'lsa — aksessuar (подоконник, соединитель): o'lcham
+    imzosi ma'nosiz bo'ladi va bekorga ogohlantirmaslik uchun ishlatilmaydi."""
+    jami = 0.0
+    for it in (items or []):
+        try:
+            jami += float(str(it.get("kv2") or 0).replace(",", ".")) * \
+                    float(str(it.get("kvo") or 0).replace(",", "."))
+        except Exception:
+            pass
+    return jami
+
+
 def _gen_pdf(n: dict, chat_id=None) -> bytes:
     """PDF generatsiya. FAQAT Operator-2 (OPERATORS[1]) uchun: landscape (albom) +
     sana bo'sh + kamchilik yashirin. Boshqa hamma uchun — to'liq portret nusxa."""
@@ -271,7 +298,11 @@ async def api_create(request: Request):
     # qaysi hujjat bilan urishganini ko'rsatamiz. Agar OTK "bu haqiqatan yangi
     # yetkazib berish" deb ongli tasdiqlasa — o'tkazamiz, lekin bazada belgilab qo'yamiz.
     new_sig = _sig(tur, schet, n.get("mtur", ""), n.get("rang", ""), n.get("profil", ""), items)
-    urishgan = None
+    # Ikkinchi qatlam: matn boshqacha yozilsa ham o'lchamlar bir xil bo'lsa ogohlantiramiz.
+    # Faqat кв² bor hujjatlarda — aksessuarda o'lcham imzosi ma'nosiz.
+    new_olcham = _olcham_sig(items) if _kv2_jami(items) > 0 else ""
+    urishgan = None          # aynan bir xil mazmun
+    olcham_mos = None        # matn boshqa, lekin o'lchamlar bir xil
     for ex in db.by_schet_exact(schet_w, schet_k):
         if ex.get("status") == "cancelled":
             continue
@@ -279,15 +310,23 @@ async def api_create(request: Request):
                 ex.get("rang"), ex.get("profil"), ex.get("items")) == new_sig:
             urishgan = ex
             break
-    if urishgan and not body.get("takror_ok"):
+        if (olcham_mos is None and new_olcham
+                and _kv2_jami(ex.get("items")) > 0
+                and _olcham_sig(ex.get("items")) == new_olcham):
+            olcham_mos = ex
+    mos = urishgan or olcham_mos
+    if mos and not body.get("takror_ok"):
         return JSONResponse(status_code=409, content={
-            "error": "Бундай накладной аллақачон бор",
+            "error": ("Бундай накладной аллақачон бор" if urishgan
+                      else "Шу счёт бўйича айнан шундай ўлчамли накладной бор"),
             "dup": {
-                "nomer": urishgan.get("nomer", ""),
-                "schet": urishgan.get("schet", ""),
-                "sana": (urishgan.get("created_at") or "")[:16],
-                "kim": urishgan.get("otk_name", ""),
-                "holat": HOLAT_NOMI.get(urishgan.get("status", ""), urishgan.get("status", "")),
+                "nomer": mos.get("nomer", ""),
+                "schet": mos.get("schet", ""),
+                "sana": (mos.get("created_at") or "")[:16],
+                "kim": mos.get("otk_name", ""),
+                "holat": HOLAT_NOMI.get(mos.get("status", ""), mos.get("status", "")),
+                "sabab": "aynan" if urishgan else "olcham",
+                "profil": mos.get("profil", ""),
             },
         })
     nid = db.create({
@@ -299,10 +338,11 @@ async def api_create(request: Request):
         "otk_id": uid, "otk_name": role["name"], "otk_imzo": body.get("imzo", ""),
         "otk_ip": _client_ip(request),
     })
-    if urishgan:
+    if mos:
         # ongli tasdiqlangan takror — auditda ajratib olish uchun iz
-        db.set_takror(nid, "№%s (id=%s) ga nisbatan tasdiqlangan · %s · %s"
-                      % (urishgan.get("nomer", ""), urishgan.get("id"),
+        db.set_takror(nid, "%s: №%s (id=%s) ga nisbatan tasdiqlangan · %s · %s"
+                      % ("aynan" if urishgan else "o'lcham",
+                         mos.get("nomer", ""), mos.get("id"),
                          role["name"], _now_local().strftime("%Y-%m-%d %H:%M")))
     # Tanlangan TURга mos Master'ga xabar
     master = config.MASTER.get(tur)
