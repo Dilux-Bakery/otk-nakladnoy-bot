@@ -48,7 +48,8 @@ MASTER = {
 GP = {"id": 555555555, "name": "Нематуллаев Э."}
 
 # Yopilgan накладнойнинг PDF si shu kishilarга boradi (uchchаласи chop eta oladi)
-OPERATORS = [666666666, 777777777]   # 1-operator (ma'lumot/arxiv), 2-operator (chop etish)
+OPERATORS = [666666666, 777777777, 999999999]   # 1-operator (ma'lumot/arxiv), 2-operator (chop etish),
+                                                #  3-operator — 1-operator vazifasini bajaradi (ixtiyoriy)
 RAHBAR = 888888888                   # ishlab chiqarish rahbari (kuzatadi + chop etadi)
 
 

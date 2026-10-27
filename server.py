@@ -568,11 +568,16 @@ async def distribute_pdf(n: dict):
 
 
 def operator_raqami(uid):
-    """Shu odam nechanchi operator? 1, 2 yoki None (rahbar/boshqa)."""
+    """Shu odam nechanchi operator? 1, 2 yoki None (rahbar/boshqa).
+
+    3-operator (OPERATOR3_ID) — 1-operatorning vazifasini bajaradi: PDF oladi,
+    uning «Qabul»i 1-operatorning javobi bo'lib yoziladi (op1_at). 1- va 3-operatordan
+    qaysi biri birinchi bossa — o'sha yetadi. 2-operatorning vazifasi alohida qoladi."""
     try:
-        return config.OPERATORS.index(int(uid)) + 1
+        n = config.OPERATORS.index(int(uid)) + 1
     except (ValueError, TypeError):
         return None
+    return 1 if n >= 3 else n
 
 
 def _operatorlar_holati(n):
@@ -797,8 +802,9 @@ async def on_callback(cb):
             return await tg("answerCallbackQuery", callback_query_id=cid,
                             text="Qabul qilishni operatorlar bosadi")
         if (n.get(f"op{raqam}_at") or "").strip():
+            # 1- va 3-operator bitta vazifa — biri qabul qilgan bo'lsa, ikkinchisiga ham yopiq
             return await tg("answerCallbackQuery", callback_query_id=cid,
-                            text="Siz allaqachon qabul qilgansiz")
+                            text="Allaqachon qabul qilingan (%s)" % ((n.get(f"op{raqam}_name") or "").strip() or "siz"))
         # Har operator FAQAT o'z vazifasini tasdiqlaydi. Ikkalasi ham
         # tasdiqlagandagina накладной to'liq qabul qilingan bo'ladi.
         yangi = db.operator_qabul(nid, raqam, who)
