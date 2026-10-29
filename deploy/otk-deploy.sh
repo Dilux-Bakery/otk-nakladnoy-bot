@@ -63,9 +63,15 @@ sudo -u Acer "$APP/venv/bin/python" -m py_compile server.py db.py pdf.py config.
 
 # ── 4) qayta ishga tushirish va tekshirish ──
 systemctl restart otk-bot
-sleep 5
+# Bot ishga tushishi ~7 soniya oladi (startup'da zaxira va h.k.). Avval 5 soniya kutilardi —
+# sog'lom versiya ham «javob bermadi» deb qaytarilib ketardi (28-29.10.2026). Endi 60 soniyagacha kutiladi.
+javob=0
+for i in $(seq 1 30); do
+    sleep 2
+    if curl -s -o /dev/null -m 5 http://127.0.0.1:8080/; then javob=1; break; fi
+done
 systemctl is-active --quiet otk-bot || qaytar "BOT KO'TARILMADI"
-curl -s -o /dev/null -m 10 http://127.0.0.1:8080/ || qaytar "BOT JAVOB BERMADI"
+[ "$javob" = 1 ] || qaytar "BOT JAVOB BERMADI"
 
 KEYIN=$(sqlite3 "$APP/nakladnoy.db" "select count(*) from nakladnoy;" 2>/dev/null)
 if [ -n "$OLDIN" ] && [ -n "$KEYIN" ] && [ "$KEYIN" -lt "$OLDIN" ]; then

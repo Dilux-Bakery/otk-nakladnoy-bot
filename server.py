@@ -244,6 +244,7 @@ def uid_from(body: dict) -> int:
 
 # holat -> odam o'qiydigan nom (takror ogohlantirishida ko'rsatiladi)
 HOLAT_NOMI = {
+    "otk": "ОТК текшируви кутилмоқда",
     "master": "мастер имзоси кутилмоқда",
     "gp": "ГП имзоси кутилмоқда",
     "closed": "ёпилган",
@@ -501,6 +502,135 @@ async def api_update(request: Request):
     return {"ok": True, "id": nid}
 
 
+# ════════════════ Dop ombor -> tayyor nakladnoy ════════════════
+# Dop ombor (shu serverда, 127.0.0.1:8091) progon tasdiqlanганда har zakaz uchun tayyor nakladnoy
+# yuboradi. OTK kesilganини tekshirib, № yozib imzolaydi -> Master -> ГП -> operatorlar (odatdagidek).
+# Ichki so'rov: faqat 127.0.0.1 dan, Caddy orqali emas (X-Forwarded-For yo'q) va umumiy kalit bilan.
+ICHKI_KALIT = os.environ.get("ICHKI_KALIT", "")
+
+
+def _ichki_ruxsat(request: Request) -> bool:
+    host = request.client.host if request.client else ""
+    kalit = request.headers.get("x-ichki-kalit", "")
+    return (bool(ICHKI_KALIT) and host == "127.0.0.1" and not request.headers.get("x-forwarded-for")
+            and hmac.compare_digest(kalit, ICHKI_KALIT))
+
+
+def _dop_tugma(soni=None):
+    """OTK uchun alohida «Dop profil» bo'limi (Mini App ro'yxati) — imzo kutayotган barcha dop nakladnoylari."""
+    if soni is None:
+        soni = len(db.dop_kutilmoqda())
+    return webapp_btn(f"📦 Dop profil ({soni})" if soni else "📦 Dop profil", "doplist")
+
+
+@app.post("/api/ichki/dop")
+async def api_ichki_dop(request: Request):
+    """Dop ombordan: {progon, manba, nakladnoylar: [{schet_w, mtur, mahsulot, rang, profil, items}]}"""
+    if not _ichki_ruxsat(request):
+        return err("Ruxsat yo‘q", 403)
+    body = await request.json()
+    otk = config.OTK.get("pvh") or {}
+    if not otk.get("id"):
+        return err("OTK (ПВХ) sozlanmagan", 500)
+    ids = []
+    for nk in (body.get("nakladnoylar") or [])[:200]:
+        items = nk.get("items") or []
+        if not items or not (nk.get("schet_w") or "").strip():
+            continue
+        ids.append(db.create_dop({
+            "tur": "pvh", "schet_w": str(nk["schet_w"]).strip()[:20], "mtur": nk.get("mtur", ""),
+            "mahsulot": nk.get("mahsulot", ""), "rang": nk.get("rang", ""), "profil": nk.get("profil", ""),
+            "items": items, "otk_id": otk["id"], "otk_name": otk.get("name", ""),
+            "manba": str(body.get("manba") or "dop")[:60],
+        }))
+    if ids:
+        # har nakladnoy alohida xabar emas — bitta xabar, bo'lim tugmasi bilan
+        await send_message(
+            otk["id"],
+            f"📦 <b>Dop profil — progon {body.get('progon', '')}</b>: {len(ids)} ta yangi накладной.\n"
+            "Kesib bo‘lingach «Dop profil» bo‘limida tekshirib, № yozib imzolang 👇", _dop_tugma())
+    return {"ok": True, "ids": ids}
+
+
+@app.post("/api/ichki/dop_bekor")
+async def api_ichki_dop_bekor(request: Request):
+    """Dop ombor progonни qaytardi: OTK hali imzolamagan nakladnoylar bekor bo'ladi."""
+    if not _ichki_ruxsat(request):
+        return err("Ruxsat yo‘q", 403)
+    body = await request.json()
+    bekor, imzolangan = db.dop_bekor(body.get("ids") or [])
+    if bekor and bekor[0].get("otk_id"):
+        await send_message(bekor[0]["otk_id"],
+                           f"❌ Dop ombor progon {body.get('progon', '')} qaytarildi — {len(bekor)} ta накладной bekor qilindi.")
+    return {"ok": True, "bekor": [n["id"] for n in bekor], "imzolangan": [n["id"] for n in imzolangan]}
+
+
+@app.post("/api/dop_royxat")
+async def api_dop_royxat(request: Request):
+    """OTK «Dop profil» bo'limi: imzo kutayotганлар (+ bugun imzolanганлар soni)."""
+    body = await request.json()
+    try:
+        uid = uid_from(body)
+    except Exception:
+        return err("Ruxsat yo‘q", 403)
+    role = config.role_of(uid)
+    if not role or role["role"] != "otk":
+        return err("Bu bo‘lim faqat OTK uchun", 403)
+    rows = [{k: v for k, v in n.items() if not k.endswith("_imzo")} for n in db.dop_kutilmoqda(300)]
+    return {"kutilmoqda": rows, "bugun_imzolandi": db.dop_bugun_imzolangan()}
+
+
+@app.post("/api/dop_imzo")
+async def api_dop_imzo(request: Request):
+    """OTK Dop nakladnoyni tekshirdi: № yozdi (kerak bo'lsa tuzatdi) va imzoladi -> Master."""
+    body = await request.json()
+    try:
+        uid = uid_from(body)
+    except Exception:
+        return err("Ruxsat yo‘q", 403)
+    role = config.role_of(uid)
+    if not role or role["role"] != "otk":
+        return err("Faqat OTK imzolaydi", 403)
+    nid = int(body.get("id", 0))
+    n = db.get(nid)
+    if not n:
+        return err("Topilmadi", 404)
+    if n["status"] != "otk":
+        return err("Bu накладной allaqachon imzolangan yoki bekor qilingan (" + str(n["status"]) + ")", 409)
+    nk = body.get("nakladnoy", {})
+    nomer = (nk.get("nomer") or "").strip()
+    if not nomer:
+        return err("Накладной № ni yozing")
+    if not body.get("imzo"):
+        return err("Imzo cheking")
+    schet_w = (nk.get("schet_w") or "").strip()
+    schet_k = (nk.get("schet_k") or "").strip()
+    if not (schet_w or schet_k):
+        return err("Kamida bitta Счёт kiriting")
+    items = nk.get("items") or []
+    if not items:
+        return err("Kamida bitta o‘lcham kiriting")
+    n2 = db.dop_imzola(nid, {
+        "nomer": nomer, "schet": " / ".join(x for x in (schet_w, schet_k) if x),
+        "schet_w": schet_w, "schet_k": schet_k, "mtur": nk.get("mtur", ""),
+        "mahsulot": nk.get("mahsulot", ""), "rang": nk.get("rang", ""), "profil": nk.get("profil", ""),
+        "kamchilik": (nk.get("kamchilik") or "").strip(), "items": items,
+        "otk_id": uid, "otk_name": role["name"], "otk_imzo": body.get("imzo", ""),
+        "otk_ip": _client_ip(request),
+    })
+    if not n2:
+        return err("Bu накладной allaqachon imzolangan", 409)
+    master = config.MASTER.get("pvh")
+    if master and master.get("id"):
+        await _send_sign_req(
+            master["id"],
+            f"🆕 Yangi накладной <b>{_ref(n2)}</b> ({pdf.TUR_LABEL.get('pvh')})\n"
+            f"Счёт: {n2['schet']} · {n2.get('mtur','')} · {n2.get('rang','')}\nTasdiqlashingiz kutilmoqda 👇",
+            nid,
+        )
+    return {"ok": True, "id": nid}
+
+
 # ════════════════ PDF tarqatish ════════════════
 # Operatorlar ish vaqti. Shu oraliqdan tashqarida yopilgan накладной
 # operatorlarga DARROV yuborilmaydi — ertasi kuni ish boshida ketadi.
@@ -688,7 +818,7 @@ async def on_message(msg):
     await on_start(uid, chat_id, role)
 
 
-ST_UZ = {"master": "⏳ Master kutilmoqda", "gp": "⏳ ГП kutilmoqda", "closed": "✅ Yopilgan",
+ST_UZ = {"otk": "📦 OTK tekshiruvi kutilmoqda", "master": "⏳ Master kutilmoqda", "gp": "⏳ ГП kutilmoqda", "closed": "✅ Yopilgan",
          "accepted": "✅ Qabul qilingan", "returned": "↩️ Qaytarilган (tuzatish kerak)",
          "cancelled": "❌ Bekor qilingan"}
 
@@ -936,9 +1066,10 @@ async def on_start(uid, chat_id, role):
         ret_n = len(db.returned_for_otk(uid))
         ed_txt = f"↩️ Tahrirlanishi kerak ({ret_n})" if ret_n else "↩️ Tahrirlanishi kerak"
         return await send_message(
-            chat_id, "👷 <b>OTK</b>\nYangi накладной yaratish, tuzatilishi kerak bo‘lganlar yoki avvalgilar 👇",
+            chat_id, "👷 <b>OTK</b>\nYangi накладной yaratish, Dop profil, tuzatilishi kerak bo‘lganlar yoki avvalgilar 👇",
             {"inline_keyboard": [
                 [{"text": "➕ Накладной yaratish", "web_app": {"url": create_url}}],
+                _dop_tugma()["inline_keyboard"][0],
                 [{"text": ed_txt, "callback_data": "toedit"}],
                 [{"text": "🗂 O‘zim to‘ldirganlarim", "callback_data": "mine"}],
             ]})

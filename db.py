@@ -1,7 +1,8 @@
 """
 SQLite baza — накладнойlar va imzolar.
 
-Status oqimi:  'master'  ->  'gp'  ->  'closed'
+Status oqimi:  ('otk')  ->  'master'  ->  'gp'  ->  'closed'
+  - Dop ombor tayyor nakladnoy yuboradi -> status 'otk' (OTK tekshirib № yozadi, imzolaydi)
   - OTK yaratadi+imzolaydi   -> status 'master'  (Master kutilmoqda)
   - Master imzolaydi         -> status 'gp'      (ГП kutilmoqda)
   - ГП imzolaydi             -> status 'closed'  (yopildi, PDF tarqatiladi)
@@ -67,7 +68,9 @@ def init():
                      "tarixiy",
                      # 17:30 dan keyin yopilgan накладной operatorlarga darrov
                      # yuborilmaydi — ertasiga 08:30 da ketadi. Shu ustunda kutadi.
-                     "kechik"):
+                     "kechik",
+                     # Dop ombordan avtomatik kelgan nakladnoy: «dop P001 #12» (OTK qo'lda yaratganда bo'sh)
+                     "manba"):
             try:
                 c.execute(f"ALTER TABLE nakladnoy ADD COLUMN {_col} TEXT")
             except Exception:
@@ -106,6 +109,74 @@ def create(d: dict) -> int:
 def get(nid: int):
     with _conn() as c:
         return _row(c.execute("SELECT * FROM nakladnoy WHERE id=?", (nid,)).fetchone())
+
+
+# ── Dop ombor (podokonnik / подставочный / москитный) — tayyor nakladnoy ──
+def create_dop(d: dict) -> int:
+    """Dop ombor progon tasdiqlanганда tayyor nakladnoy: status 'otk' (OTK imzosi hali yo'q, № bo'sh)."""
+    with _conn() as c:
+        cur = c.execute("""
+            INSERT INTO nakladnoy
+              (nomer,tur,schet,sistema,schet_w,schet_k,mtur,mahsulot,rang,profil,kamchilik,items,status,
+               otk_id,otk_name,manba,created_at)
+            VALUES ('',?,?,'',?,'',?,?,?,?,'',?,'otk',?,?,?,?)
+        """, (
+            d.get("tur", "pvh"), d.get("schet_w", ""), d.get("schet_w", ""),
+            d.get("mtur", ""), d.get("mahsulot", ""), d.get("rang", ""), d.get("profil", ""),
+            json.dumps(d.get("items", []), ensure_ascii=False),
+            d.get("otk_id"), d.get("otk_name", ""), d.get("manba", ""), _now(),
+        ))
+        return cur.lastrowid
+
+
+def dop_imzola(nid: int, d: dict):
+    """OTK Dop nakladnoyni tekshirdi (kerak bo'lsa tuzatdi), № yozdi, imzoladi -> 'master'.
+    Faqat 'otk' holatida (ikki marta bosilsa ham bir marta o'tadi). Yangi holat yoki None."""
+    with _conn() as c:
+        n = c.execute("""
+            UPDATE nakladnoy SET nomer=?, schet=?, schet_w=?, schet_k=?, mtur=?, mahsulot=?, rang=?,
+              profil=?, kamchilik=?, items=?, otk_id=?, otk_name=?, otk_imzo=?, otk_at=?, otk_ip=?,
+              status='master'
+            WHERE id=? AND status='otk'
+        """, (
+            d.get("nomer", ""), d.get("schet", ""), d.get("schet_w", ""), d.get("schet_k", ""),
+            d.get("mtur", ""), d.get("mahsulot", ""), d.get("rang", ""), d.get("profil", ""),
+            d.get("kamchilik", ""), json.dumps(d.get("items", []), ensure_ascii=False),
+            d.get("otk_id"), d.get("otk_name", ""), d.get("otk_imzo", ""), _now(), d.get("otk_ip", ""),
+            nid,
+        )).rowcount
+    return get(nid) if n else None
+
+
+def dop_kutilmoqda(limit: int = 100):
+    """OTK tekshiruvini kutayotган Dop nakladnoylari."""
+    with _conn() as c:
+        return [_row(r) for r in c.execute(
+            "SELECT * FROM nakladnoy WHERE status='otk' ORDER BY id LIMIT ?", (limit,))]
+
+
+def dop_bugun_imzolangan() -> int:
+    """Bugun OTK imzolagan Dop nakladnoylari soni («Dop profil» bo'limida ko'rsatiladi)."""
+    with _conn() as c:
+        return c.execute("SELECT COUNT(*) FROM nakladnoy WHERE manba LIKE 'dop%' AND otk_imzo != '' "
+                         "AND substr(otk_at,1,10)=?", (_now()[:10],)).fetchone()[0]
+
+
+def dop_bekor(ids):
+    """Dop ombor progonни qaytarди — OTK hali imzolamaganlari bekor bo'ladi.
+    Qaytadi: (bekor qilinganlar, allaqachon imzolanganlar) — nakladnoy dict ro'yxatlari."""
+    bekor, imzolangan = [], []
+    for nid in ids:
+        n = get(int(nid))
+        if not n or n.get("status") == "cancelled":
+            continue
+        if n["status"] == "otk":
+            with _conn() as c:
+                c.execute("UPDATE nakladnoy SET status='cancelled' WHERE id=? AND status='otk'", (n["id"],))
+            bekor.append(n)
+        else:
+            imzolangan.append(n)
+    return bekor, imzolangan
 
 
 def sign(nid: int, role: str, uid: int, name: str, imzo: str, ip: str = ""):

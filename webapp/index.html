@@ -177,6 +177,15 @@
     </div>
   </div>
 
+  <!-- ═══════════ DOP PROFIL bo'limi (OTK) ═══════════ -->
+  <div id="v-doplist" style="display:none">
+    <div class="card">
+      <h2>📦 Dop profil</h2>
+      <p class="sub" id="dopSub">Imzo kutayotган накладнойлар</p>
+      <div id="dopList"></div>
+    </div>
+  </div>
+
   <!-- ═══════════ Yopilgandan keyin ═══════════ -->
   <div id="v-done" style="display:none">
     <div class="card"><div class="sbanner"><div class="ico" id="doneIco">✅</div><h3 id="doneT">Bajarildi</h3><p id="doneP"></p></div></div>
@@ -191,11 +200,12 @@ const Q = new URLSearchParams(location.search);
 const MODE = Q.get('mode') || 'create';
 const NID = Q.get('id');
 const EDIT_ID = (Q.get('mode') === 'edit') ? Q.get('id') : null;
+const DOP_ID = (Q.get('mode') === 'dop') ? Q.get('id') : null;   // Dop ombordan kelgan tayyor nakladnoy
 const DEV = Q.get('dev') || '';            // lokal test uchun (server DEV rejimida)
 const TUR_LABEL = { alyumin:'АЛЮМИНЬ', pvh:'ПВХ' };
 let ME = null;                              // {role, tur, name}
 
-function show(id){ ['v-load','v-err','v-create','v-sign','v-done'].forEach(v=>document.getElementById(v).style.display = (v===id?'':'none')); }
+function show(id){ ['v-load','v-err','v-create','v-sign','v-done','v-doplist'].forEach(v=>document.getElementById(v).style.display = (v===id?'':'none')); }
 function fail(msg){ document.getElementById('err-msg').textContent = msg; show('v-err'); }
 
 async function api(path, body){
@@ -212,7 +222,8 @@ async function api(path, body){
   try {
     ME = await api('/api/me');
     if (MODE === 'sign') return initSign();
-    if (MODE === 'edit') return initEdit();
+    if (MODE === 'edit' || MODE === 'dop') return initEdit();
+    if (MODE === 'doplist') return initDopList();
     return initCreate();
   } catch(e){ fail('Ruxsat yo‘q yoki xato: ' + e.message); }
 })();
@@ -230,6 +241,7 @@ async function initEdit(){
   let n;
   try { n = (await api('/api/get', { id: NID })).nakladnoy; }
   catch(e){ return fail('Ochib bo‘lmadi: ' + e.message); }
+  if (DOP_ID && n.status !== 'otk') return fail('Bu накладной allaqachon imzolangan yoki bekor qilingan (status: ' + n.status + ').');
   initCreate();
   document.getElementById('turSel').value = n.tur || 'alyumin'; turChange();
   document.getElementById('nomer').value = n.nomer || '';
@@ -245,8 +257,38 @@ async function initEdit(){
   document.getElementById('kamchilik').value = n.kamchilik || '';
   S.items = (n.items || []).slice();
   renderItems();
-  document.querySelector('#pg1 h2').textContent = '✏️ Tahrirlash №' + (n.nomer || '');
+  document.querySelector('#pg1 h2').textContent = DOP_ID ? '📦 Dop ombordan — tekshiring' : ('✏️ Tahrirlash №' + (n.nomer || ''));
+  if (DOP_ID) {
+    document.querySelector('#pg1 .sub').textContent = 'Ma\'lumotlar tayyor. Kesilganini tekshiring, № yozing, kerak bo\'lsa tuzating.';
+    document.getElementById('nomer').focus();
+  }
 }
+/* ═════════ DOP PROFIL bo'limi: imzo kutayotганлар — imzolangани ro'yxatdan chiqib ketadi ═════════ */
+function esc(v){ return String(v==null?'':v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+async function initDopList(){
+  if (ME.role !== 'otk') return fail('Bu bo‘lim faqat OTK uchun.');
+  let d;
+  try { d = await api('/api/dop_royxat'); } catch(e){ return fail('Ochib bo‘lmadi: ' + e.message); }
+  const rows = d.kutilmoqda || [];
+  document.getElementById('dopSub').textContent = rows.length
+    ? ('Imzo kutilmoqda: ' + rows.length + ' ta' + (d.bugun_imzolandi ? ' · bugun imzolandi: ' + d.bugun_imzolandi : ''))
+    : ('Hammasi imzolangan ✅' + (d.bugun_imzolandi ? ' (bugun: ' + d.bugun_imzolandi + ' ta)' : ''));
+  // progon bo'yicha guruhlab (profil oxirida «П-- P001»)
+  const progon = n => ((n.profil || '').match(/П--\s*(\S+)\s*$/) || [,'—'])[1];
+  let oldingi = null;
+  document.getElementById('dopList').innerHTML = rows.map(n => {
+    const p = progon(n), dona = (n.items||[]).reduce((a,i)=>a+(parseInt(i.kvo)||0),0);
+    const sar = p !== oldingi ? '<div style="margin:14px 0 6px;font-weight:700;color:#8E8E93">Progon ' + esc(p) + '</div>' : '';
+    oldingi = p;
+    return sar + '<div class="irow" style="cursor:pointer;margin-bottom:6px" onclick="dopOch(' + n.id + ')">' +
+      '<div><b>Счёт ' + esc(n.schet) + '</b> · ' + esc(n.mtur) + '<br><span style="color:#8E8E93;font-size:13px">' +
+      esc(n.rang || '—') + ' · ' + esc((n.profil || '').replace(/\s*П--\s*\S+\s*$/, '')) + '</span></div>' +
+      '<div style="display:flex;gap:8px;align-items:center"><b>' + dona + ' dona</b><span style="color:#007AFF;font-size:20px">›</span></div></div>';
+  }).join('');
+  show('v-doplist');
+}
+function dopOch(id){ location.search = '?v=' + (Q.get('v')||'') + '&mode=dop&id=' + id; }
+
 const labels = ['','Ma\'lumot','O\'lchamlar','Imzo','Tayyor'];
 function goPage(n){
   document.querySelectorAll('#v-create .pg').forEach(p=>p.classList.remove('on'));
@@ -276,7 +318,8 @@ function pg1next(){
   document.getElementById('schet_w').classList.toggle('err', !schetOk2);
   document.getElementById('schet_k').classList.toggle('err', !schetOk2);
   ok = schetOk2 && ok;
-  const rangOk=!!S.rang; document.getElementById('e_rang').style.display=rangOk?'none':'block'; ok = rangOk && ok;
+  // Dop: подставочный rangsiz keladi — rang majburiy emas
+  const rangOk=!!S.rang || !!DOP_ID; document.getElementById('e_rang').style.display=rangOk?'none':'block'; ok = rangOk && ok;
   if(ok){ setupDims(); goPage(2); }
 }
 function isProf(){ return (S.mtur || (document.getElementById('mtur')||{}).value) === 'Доп Профил'; }
@@ -338,6 +381,7 @@ async function submitCreate(){
   try{
     const nk = { tur:S.tur, nomer:S.nomer, schet_w:S.schet_w, schet_k:S.schet_k, mtur:S.mtur, mahsulot:S.mahsulot, rang:S.rang, profil:S.profil, kamchilik:val('kamchilik'), items:S.items };
     if (EDIT_ID) await api('/api/update', { id:EDIT_ID, nakladnoy:nk, imzo:sigCreate });
+    else if (DOP_ID) await api('/api/dop_imzo', { id:DOP_ID, nakladnoy:nk, imzo:sigCreate });
     else {
       try {
         await api('/api/create', { nakladnoy:nk, imzo:sigCreate });
@@ -365,8 +409,10 @@ async function submitCreate(){
       }
     }
     goPage(4);
-    document.getElementById('okCreate').textContent = EDIT_ID ? ('№'+S.nomer+' — tuzatildi va qayta yopildi.') : ('№'+S.nomer+' — Master tasdiqlashiga yuborildi.');
-    if(TG) setTimeout(()=>TG.close(), 2500);
+    document.getElementById('okCreate').textContent = DOP_ID ? ('№'+S.nomer+' — imzolandi, Master tasdiqlashiga yuborildi.') : EDIT_ID ?('№'+S.nomer+' — tuzatildi va qayta yopildi.') : ('№'+S.nomer+' — Master tasdiqlashiga yuborildi.');
+    // Dop: imzolangani ro'yxatdan chiqib ketadi — keyingisiga qaytamiz
+    if (DOP_ID) setTimeout(()=>{ location.search = '?v=' + (Q.get('v')||'') + '&mode=doplist'; }, 1500);
+    else if(TG) setTimeout(()=>TG.close(), 2500);
   }catch(e){ btn.disabled=false; btn.textContent='✓ Yuborish'; alert('Xato: '+e.message); }
 }
 
