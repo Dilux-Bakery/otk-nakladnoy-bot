@@ -119,9 +119,10 @@ def create_dop(d: dict) -> int:
             INSERT INTO nakladnoy
               (nomer,tur,schet,sistema,schet_w,schet_k,mtur,mahsulot,rang,profil,kamchilik,items,status,
                otk_id,otk_name,manba,created_at)
-            VALUES ('',?,?,'',?,'',?,?,?,?,'',?,'otk',?,?,?,?)
+            VALUES ('',?,?,'',?,?,?,?,?,?,'',?,'otk',?,?,?,?)
         """, (
-            d.get("tur", "pvh"), d.get("schet_w", ""), d.get("schet_w", ""),
+            d.get("tur", "pvh"), " / ".join(x for x in (d.get("schet_w", ""), d.get("schet_k", "")) if x),
+            d.get("schet_w", ""), d.get("schet_k", ""),
             d.get("mtur", ""), d.get("mahsulot", ""), d.get("rang", ""), d.get("profil", ""),
             json.dumps(d.get("items", []), ensure_ascii=False),
             d.get("otk_id"), d.get("otk_name", ""), d.get("manba", ""), _now(),

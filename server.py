@@ -535,10 +535,13 @@ async def api_ichki_dop(request: Request):
     ids = []
     for nk in (body.get("nakladnoylar") or [])[:200]:
         items = nk.get("items") or []
-        if not items or not (nk.get("schet_w") or "").strip():
+        # Direct Plan zakaz raqami — Klaes Счёт (WinCAD bo'lsa schet_w)
+        schet_w = str(nk.get("schet_w") or "").strip()[:20]
+        schet_k = str(nk.get("schet_k") or "").strip()[:20]
+        if not items or not (schet_w or schet_k):
             continue
         ids.append(db.create_dop({
-            "tur": "pvh", "schet_w": str(nk["schet_w"]).strip()[:20], "mtur": nk.get("mtur", ""),
+            "tur": "pvh", "schet_w": schet_w, "schet_k": schet_k, "mtur": nk.get("mtur", ""),
             "mahsulot": nk.get("mahsulot", ""), "rang": nk.get("rang", ""), "profil": nk.get("profil", ""),
             "items": items, "otk_id": otk["id"], "otk_name": otk.get("name", ""),
             "manba": str(body.get("manba") or "dop")[:60],
