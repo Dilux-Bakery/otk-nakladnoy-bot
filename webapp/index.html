@@ -368,7 +368,7 @@ function renderItems(){
   document.getElementById('pg2sub').textContent='Qo\'shilgan: '+S.items.length+' ta'+(isProf()?(totLen?' · Umumiy uzunlik: '+(totLen/1000).toFixed(2)+' м':''):' · Jami: '+tot+' м²');
   document.getElementById('ilist').innerHTML=S.items.map((it,i)=>{
     const desc = it.shr ? (it.kvo+' dona — '+it.shr+'×'+it.dln+' mm') : (it.kvo+' dona — Длина '+it.dln+' mm');
-    const v2 = it.shr ? '<b style="color:#007AFF">'+(+it.kv2).toFixed(2)+' м²</b>' : '<b style="color:#5856D6">профиль</b>';
+    const v2 = (it.shr && !isProf()) ? '<b style="color:#007AFF">'+(+it.kv2).toFixed(2)+' м²</b>' : '<b style="color:#5856D6">профиль</b>';
     return '<div class="irow"><div>'+(i+1)+'. '+desc+'</div><div style="display:flex;gap:8px;align-items:center">'+v2+'<button class="idel" onclick="delItem('+i+')">✕</button></div></div>';
   }).join('');
 }
