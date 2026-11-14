@@ -22,7 +22,10 @@ AFTER_SIGN = {"master": "gp", "gp": "closed"}
 
 
 def _conn():
-    c = sqlite3.connect(DB_PATH)
+    # timeout=30: baza band bo'lsa (masalan, zaxira nusxasi olinayotganda — baza 300 MB, nusxa 5 soniyadan
+    # uzoq davom etishi mumkin) yozuv xato bermasdan kutadi. Standart 5 soniya yetmay, 2026-11-12 da bitta
+    # imzo «database is locked» bilan saqlanmagan edi.
+    c = sqlite3.connect(DB_PATH, timeout=30)
     c.row_factory = sqlite3.Row
     return c
 
